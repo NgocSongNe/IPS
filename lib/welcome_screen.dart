@@ -48,7 +48,7 @@ class _WelcomePageState extends State<WelcomePage> {
               child: Column(
                 children: [
                   Text(
-                    "Testo",
+                    "Testing",
                     style: TextStyle(
                       fontSize: 19,
                       fontWeight: FontWeight.w600,
