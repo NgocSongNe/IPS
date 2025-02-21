@@ -5,10 +5,10 @@ import 'package:flutter_application_1/home.dart';
 import 'package:flutter_application_1/information.dart';
 import 'package:flutter_application_1/models/category_model.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-
+import 'package:google_fonts/google_fonts.dart';
 
 class InformationPage extends StatefulWidget {
-  InformationPage({super.key}); 
+  InformationPage({super.key});
   @override
   State<InformationPage> createState() => _InformationPageState();
 }
@@ -53,17 +53,22 @@ class _InformationPageState extends State<InformationPage> {
         if (index == 0) {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => HomePage()), // Giữ lại trang HomePage
+            MaterialPageRoute(
+                builder: (context) => HomePage()), // Giữ lại trang HomePage
           );
         } else if (index == 1) {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => InformationPage()), // Điều hướng đến InformationPage
+            MaterialPageRoute(
+                builder: (context) =>
+                    InformationPage()), // Điều hướng đến InformationPage
           );
         } else if (index == 2) {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => AccountPage()), // Điều hướng đến AccountPage
+            MaterialPageRoute(
+                builder: (context) =>
+                    AccountPage()), // Điều hướng đến AccountPage
           );
         }
       },
@@ -89,29 +94,25 @@ class _InformationPageState extends State<InformationPage> {
     );
   }
 
-  
   Container _searchField() {
     return Container(
       margin: EdgeInsets.only(top: 40, left: 20, right: 20),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
-          BoxShadow(
-              color: Color(0xff1D1617),
-              blurRadius: 5,
-              spreadRadius: 0.0)
+          BoxShadow(color: Color(0xff1D1617), blurRadius: 5, spreadRadius: 0.0)
         ],
       ),
       child: TextFormField(
         decoration: InputDecoration(
-          border: InputBorder.none,
-          hintText: 'Search',
-          hintStyle: TextStyle(color: Color(0xff888888), fontSize: 14),
-          prefixIcon:Icon(
-            Icons.search,
-            size: 25,
-          ) 
-        ),
+            border: InputBorder.none,
+            hintText: 'Search',
+            hintStyle:
+                GoogleFonts.openSans(color: Color(0xff888888), fontSize: 14),
+            prefixIcon: Icon(
+              Icons.search,
+              size: 25,
+            )),
       ),
     );
   }

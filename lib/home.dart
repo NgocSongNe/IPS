@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/Location.dart';
 import 'package:flutter_application_1/account.dart';
 import 'package:flutter_application_1/information.dart';
 import 'package:flutter_application_1/models/category_model.dart';
 import 'package:flutter_application_1/models/map_model.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:photo_view/photo_view.dart';
 
 class HomePage extends StatefulWidget {
@@ -47,7 +49,8 @@ class _HomePageState extends State<HomePage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text("Vuốt để di chuyển", style: TextStyle(fontSize: 18)),
+              Text("Vuốt để di chuyển",
+                  style: GoogleFonts.openSans(fontSize: 18)),
               SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -71,7 +74,8 @@ class _HomePageState extends State<HomePage> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: Text("OK", style: TextStyle(color: Colors.white)),
+                child: Text("OK",
+                    style: GoogleFonts.openSans(color: Colors.white)),
               ),
             ],
           ),
@@ -115,7 +119,7 @@ class _HomePageState extends State<HomePage> {
         decoration: InputDecoration(
           border: InputBorder.none,
           hintText: 'Tìm kiếm địa điểm ...',
-          hintStyle: TextStyle(color: Colors.green, fontSize: 18),
+          hintStyle: GoogleFonts.openSans(color: Colors.green, fontSize: 18),
           prefixIcon: Icon(Icons.gps_fixed, size: 25, color: Colors.black),
           suffixIcon: Row(
             mainAxisSize: MainAxisSize.min,
