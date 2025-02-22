@@ -20,6 +20,7 @@ class _HomePageState extends State<HomePage> {
   List<CategoryModel> categories = [];
   List<MapModel> maps = [];
   bool _isDialogDismissed = false; // Kiểm soát việc tắt hộp thoại
+  PhotoViewComputedScale _photoViewScale = PhotoViewComputedScale.covered * 1;
 
   @override
   void initState() {
@@ -89,13 +90,60 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: Color(0xffFFEBCD),
       bottomNavigationBar: _bottomNavBar(),
-      body: Column(
+      body: Stack(
         children: [
-          _searchField(),
-          SizedBox(height: 20),
-          _categoryButton('Category Title', Icons.category),
-          SizedBox(height: 20),
-          _isDialogDismissed ? _buildMapSection() : Container(),
+          Column(
+            children: [
+              _searchField(),
+              SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 15.0),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _categoryButton('Kệ sách', Icons.book),
+                      _categoryButton('Khu vực đọc', Icons.menu_book),
+                      _categoryButton('Phòng vệ sinh', Icons.people),
+                      _categoryButton('Căn tin', Icons.food_bank),
+                      _categoryButton('Phòng học', Icons.class_),
+                      _categoryButton('Phòng thí nghiệm', Icons.science),
+                      _categoryButton('Phòng máy tính', Icons.computer),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              _isDialogDismissed ? _buildMapSection() : Container(),
+            ],
+          ),
+          Positioned(
+            bottom: 20,
+            right: 20,
+            child: Column(
+              children: [
+                FloatingActionButton(
+                  heroTag: "location_button",
+                  onPressed: () {
+                    // Add your location button functionality here
+                  },
+                  backgroundColor: Colors.yellow,
+                  child: Icon(Icons.my_location, color: Colors.black),
+                ),
+                SizedBox(height: 10),
+                FloatingActionButton(
+                  heroTag: "zoom_button",
+                  onPressed: () {
+                    setState(() {
+                      _photoViewScale = PhotoViewComputedScale.covered * 0;
+                    });
+                  },
+                  backgroundColor: Colors.white,
+                  child: Icon(Icons.map, color: Colors.black),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -151,30 +199,39 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _categoryButton(String title, IconData icon) {
-    return ElevatedButton.icon(
-      onPressed: () {},
-      icon: Icon(icon, color: Colors.black),
-      label: Text(title, style: GoogleFonts.openSans(color: Colors.black)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      child: ElevatedButton.icon(
+        onPressed: () {},
+        icon: Icon(icon, color: Colors.black),
+        label: Text(title, style: GoogleFonts.openSans(color: Colors.black)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
       ),
     );
   }
 
   Widget _buildMapSection() {
     return Expanded(
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: PhotoView(
-          imageProvider: AssetImage("../assets/icon/map_test.jpg"),
-          minScale: PhotoViewComputedScale.contained,
-          maxScale: PhotoViewComputedScale.covered * 2,
-          initialScale:
-              PhotoViewComputedScale.covered * 1, // Set initial scale to 2x
-          enableRotation: true,
-          backgroundDecoration: BoxDecoration(
-            color: Colors.white,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.black, width: 2),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: ClipRRect(
+          borderRadius:
+              BorderRadius.circular(18), // Adjust to fit within the border
+          child: PhotoView(
+            imageProvider: AssetImage("../assets/icon/map_test.jpg"),
+            minScale: PhotoViewComputedScale.contained,
+            maxScale: PhotoViewComputedScale.covered * 2,
+            initialScale: _photoViewScale, // Set initial scale to 2x
+            enableRotation: true,
+            backgroundDecoration: BoxDecoration(
+              color: Colors.white,
+            ),
           ),
         ),
       ),

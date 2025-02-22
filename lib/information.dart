@@ -17,12 +17,31 @@ class InformationPage extends StatefulWidget {
 
 class _InformationPageState extends State<InformationPage> {
   int currentPageIndex = 1;
+  List<Widget> postCards = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize with some post cards
+    postCards = List.generate(3, (index) => _buildPostCard());
+  }
+
+  void _addPostCard() {
+    setState(() {
+      postCards.add(_buildPostCard());
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xffFFEBCD),
       bottomNavigationBar: _bottomNavBar(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addPostCard,
+        child: Icon(Icons.add),
+        backgroundColor: Colors.lightGreen,
+      ),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -30,7 +49,7 @@ class _InformationPageState extends State<InformationPage> {
             SizedBox(height: 20),
             _buildCategoryButtons(),
             SizedBox(height: 20),
-            _buildPostCard(),
+            _buildPostCards(),
           ],
         ),
       ),
@@ -88,27 +107,42 @@ class _InformationPageState extends State<InformationPage> {
 
   Widget _buildCategoryButtons() {
     return Padding(
-      padding: const EdgeInsets.all(10.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _categoryButton('Kệ sách', Icons.book),
-          _categoryButton('Khu vực đọc', Icons.menu_book),
-          _categoryButton('Phòng vệ sinh', Icons.people),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: 15.0),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _categoryButton('Kệ sách', Icons.book),
+            _categoryButton('Khu vực đọc', Icons.menu_book),
+            _categoryButton('Phòng vệ sinh', Icons.people),
+            _categoryButton('Căn tin', Icons.food_bank),
+            _categoryButton('Phòng học', Icons.class_),
+            _categoryButton('Phòng thí nghiệm', Icons.science),
+            _categoryButton('Phòng máy tính', Icons.computer),
+          ],
+        ),
       ),
     );
   }
 
   Widget _categoryButton(String title, IconData icon) {
-    return ElevatedButton.icon(
-      onPressed: () {},
-      icon: Icon(icon, color: Colors.black),
-      label: Text(title, style: GoogleFonts.openSans(color: Colors.black)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      child: ElevatedButton.icon(
+        onPressed: () {},
+        icon: Icon(icon, color: Colors.black),
+        label: Text(title, style: GoogleFonts.openSans(color: Colors.black)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
       ),
+    );
+  }
+
+  Widget _buildPostCards() {
+    return Column(
+      children: postCards,
     );
   }
 
