@@ -65,8 +65,9 @@ class _WelcomePageState extends State<WelcomePage> {
                       "Thư viện là nơi cung cấp tài liệu học tập và nghiên cứu chủ yếu cho cán bộ và sinh viên tại trường Đại Học Đà Lạt",
                       textAlign: TextAlign.center,
                       style: GoogleFonts.openSans(
-                          fontSize: 17,
-                          color: const Color.fromARGB(255, 79, 79, 79)),
+                        fontSize: 17,
+                        color: Colors.grey[700],
+                      ),
                     ),
                   ),
                   SizedBox(
@@ -87,7 +88,7 @@ class _WelcomePageState extends State<WelcomePage> {
                             EdgeInsets.symmetric(vertical: 15, horizontal: 80),
                         child: Text(
                           "Khám phá",
-                          style: TextStyle(
+                          style: GoogleFonts.openSans(
                               color: Colors.white,
                               fontSize: 15,
                               fontWeight: FontWeight.bold),

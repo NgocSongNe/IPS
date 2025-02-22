@@ -19,6 +19,7 @@ class CategoryModel {
         name: 'Kệ sách',
         icons: Icon(Icons.book),
         boxColor: Color(0xffE1E1E1)
+        
       )
     );
     categories.add(

@@ -93,7 +93,7 @@ class _HomePageState extends State<HomePage> {
         children: [
           _searchField(),
           SizedBox(height: 20),
-          _categoriesMethod(),
+          _categoryButton('Category Title', Icons.category),
           SizedBox(height: 20),
           _isDialogDismissed ? _buildMapSection() : Container(),
         ],
@@ -114,62 +114,50 @@ class _HomePageState extends State<HomePage> {
           )
         ],
       ),
-      child: TextFormField(
-        controller: searchPlaceController,
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          hintText: 'Tìm kiếm địa điểm ...',
-          hintStyle: GoogleFonts.openSans(color: Colors.green, fontSize: 18),
-          prefixIcon: Icon(Icons.gps_fixed, size: 25, color: Colors.black),
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: Icon(Icons.mic, color: Colors.black),
-                onPressed: () {},
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => SuggestedPlacesScreen()),
+          );
+        },
+        child: AbsorbPointer(
+          child: TextFormField(
+            controller: searchPlaceController,
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              hintText: 'Tìm kiếm địa điểm ...',
+              hintStyle:
+                  GoogleFonts.openSans(color: Colors.grey[00], fontSize: 18),
+              prefixIcon: Icon(Icons.gps_fixed, size: 25, color: Colors.black),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.mic, color: Colors.black),
+                    onPressed: () {},
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.search, color: Colors.black),
+                    onPressed: () {},
+                  ),
+                ],
               ),
-              IconButton(
-                icon: Icon(Icons.search, color: Colors.black),
-                onPressed: () {},
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _categoriesMethod() {
-    return Container(
-      height: 40,
-      child: ListView.separated(
-        itemCount: categories.length,
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.only(left: 10, right: 20),
-        separatorBuilder: (context, index) => SizedBox(width: 10),
-        itemBuilder: (context, index) {
-          return Container(
-            width: 120,
-            decoration: BoxDecoration(
-              color: categories[index].boxColor,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                categories[index].icons,
-                SizedBox(width: 5),
-                Text(
-                  categories[index].name,
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                      fontSize: 14),
-                ),
-              ],
-            ),
-          );
-        },
+  Widget _categoryButton(String title, IconData icon) {
+    return ElevatedButton.icon(
+      onPressed: () {},
+      icon: Icon(icon, color: Colors.black),
+      label: Text(title, style: GoogleFonts.openSans(color: Colors.black)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
@@ -182,6 +170,8 @@ class _HomePageState extends State<HomePage> {
           imageProvider: AssetImage("../assets/icon/map_test.jpg"),
           minScale: PhotoViewComputedScale.contained,
           maxScale: PhotoViewComputedScale.covered * 2,
+          initialScale:
+              PhotoViewComputedScale.covered * 1, // Set initial scale to 2x
           enableRotation: true,
           backgroundDecoration: BoxDecoration(
             color: Colors.white,
