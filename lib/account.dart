@@ -68,7 +68,7 @@ class _AccountPageState extends State<AccountPage> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(100),
             child: Image.asset(
-              '../assets/icon/avt_st.jpg',
+              '../assets/avt_st.jpg',
               width: 100,
               height: 100,
               fit: BoxFit.cover,

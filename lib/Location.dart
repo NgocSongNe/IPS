@@ -101,26 +101,26 @@ class SuggestedPlacesScreen extends StatelessWidget {
 }
 
 final List<Map<String, String>> suggestedPlaces = [
-  {'image': 'assets/canteen.jpg', 'name': 'Căn tin trường'},
+  {'image': '../assets/canteen.jpg', 'name': 'Căn tin trường'},
   {
-    'image': 'assets/reading_area.jpg',
+    'image': '../assets/reading_area.jpg',
     'name': 'Khu vực đọc',
     'subtitle': 'Khu vực đọc 1'
   },
   {
-    'image': 'assets/magazine_room.jpg',
+    'image': '../assets/magazine_room.jpg',
     'name': 'Phòng tạp chí',
     'subtitle': 'Phòng tạp chí 1'
   },
-  {'image': 'assets/main_entrance.jpg', 'name': 'Cửa chính'},
-  {'image': 'assets/info_desk.jpg', 'name': 'Quầy thông tin'},
+  {'image': '../assets/main_entrance.jpg', 'name': 'Cửa chính'},
+  {'image': '../assets/info_desk.jpg', 'name': 'Quầy thông tin'},
   {
-    'image': 'assets/restroom.jpg',
+    'image': '../assets/restroom.jpg',
     'name': 'Phòng vệ sinh',
     'subtitle': 'Phòng vệ sinh 1'
   },
   {
-    'image': 'assets/practice_room.jpg',
+    'image': '../assets/practice_room.jpg',
     'name': 'Phòng thực hành',
     'subtitle': 'Phòng thực hành 3&4'
   },
