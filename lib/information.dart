@@ -155,7 +155,7 @@ class _InformationPageState extends State<InformationPage> {
         children: [
           ListTile(
             leading: CircleAvatar(
-              backgroundImage: AssetImage('../assets/icon/avt_st.jpg'),
+              backgroundImage: AssetImage('../assets/avt_st.jpg'),
             ),
             title: Text(
               'Tăng Thế Ngọc Song',
@@ -174,7 +174,7 @@ class _InformationPageState extends State<InformationPage> {
             borderRadius:
                 const BorderRadius.vertical(bottom: Radius.circular(10)),
             child: Image.asset(
-              '../assets/icon/new_year_banner.jpg',
+              '../assets/new_year_banner.jpg',
               fit: BoxFit.cover,
               width: double.infinity,
             ),

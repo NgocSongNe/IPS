@@ -174,10 +174,10 @@ class _HomePageState extends State<HomePage> {
             controller: searchPlaceController,
             decoration: InputDecoration(
               border: InputBorder.none,
-              hintText: 'Tìm kiếm địa điểm ...',
+              hintText: '   Tìm kiếm địa điểm ...',
               hintStyle:
                   GoogleFonts.openSans(color: Colors.grey[00], fontSize: 18),
-              prefixIcon: Icon(Icons.gps_fixed, size: 25, color: Colors.black),
+              //prefixIcon: Icon(Icons.gps_fixed, size: 25, color: Colors.black),
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -224,7 +224,7 @@ class _HomePageState extends State<HomePage> {
           borderRadius:
               BorderRadius.circular(18), // Adjust to fit within the border
           child: PhotoView(
-            imageProvider: AssetImage("../assets/icon/map_test.jpg"),
+            imageProvider: AssetImage("../assets/map_test.jpg"),
             minScale: PhotoViewComputedScale.contained,
             maxScale: PhotoViewComputedScale.covered * 2,
             initialScale: _photoViewScale, // Set initial scale to 2x
