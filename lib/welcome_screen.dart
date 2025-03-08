@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/home.dart';
 
+import 'package:google_fonts/google_fonts.dart';
+
+
 class WelcomePage extends StatefulWidget {
   WelcomePage({super.key});
   @override
@@ -48,8 +51,10 @@ class _WelcomePageState extends State<WelcomePage> {
               child: Column(
                 children: [
                   Text(
-                    "Testing",
-                    style: TextStyle(
+
+                    "Thư viện Trường Đại học Đà Lạt kính chào",
+                    style: GoogleFonts.openSans(
+
                       fontSize: 19,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 1,
@@ -63,9 +68,12 @@ class _WelcomePageState extends State<WelcomePage> {
                     child: Text(
                       "Thư viện là nơi cung cấp tài liệu học tập và nghiên cứu chủ yếu cho cán bộ và sinh viên tại trường Đại Học Đà Lạt",
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: 17,
-                          color: const Color.fromARGB(255, 79, 79, 79)),
+
+                      style: GoogleFonts.openSans(
+                        fontSize: 17,
+                        color: Colors.grey[700],
+                      ),
+
                     ),
                   ),
                   SizedBox(
@@ -86,7 +94,9 @@ class _WelcomePageState extends State<WelcomePage> {
                             EdgeInsets.symmetric(vertical: 15, horizontal: 80),
                         child: Text(
                           "Khám phá",
-                          style: TextStyle(
+
+                          style: GoogleFonts.openSans(
+
                               color: Colors.white,
                               fontSize: 15,
                               fontWeight: FontWeight.bold),
