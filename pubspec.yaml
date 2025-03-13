@@ -35,6 +35,8 @@ dependencies:
   # path: ^1.8.0
   flutter_map: ^6.2.0
   latlong2: ^0.9.1
+  flutter_map_geojson: ^1.0.0
+  Geo
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -71,6 +73,12 @@ flutter:
     - assets/icon/image.png
     - assets/icon/position.svg
     - assets/icon/Search.svg
+    - assets/geojson/Room.geojson
+    - assets/geojson/Wall.geojson
+    - assets/geojson/Hallways.geojson
+    - assets/geojson/Doors.geojson
+    - assets/geojson/POI.geojson
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

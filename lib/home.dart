@@ -6,7 +6,10 @@ import 'package:flutter_application_1/models/category_model.dart';
 import 'package:flutter_application_1/models/map_model.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:photo_view/photo_view.dart';
-
+import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_geojson/flutter_map_geojson.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:flutter/services.dart' show rootBundle;
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 
@@ -21,14 +24,63 @@ class _HomePageState extends State<HomePage> {
   List<MapModel> maps = [];
   bool _isDialogDismissed = false; // Kiểm soát việc tắt hộp thoại
   PhotoViewComputedScale _photoViewScale = PhotoViewComputedScale.covered * 1;
-
+  final GeoJsonParser geoJsonParser = GeoJsonParser();
   @override
   void initState() {
     super.initState();
     getCategories();
     getMaps();
     WidgetsBinding.instance.addPostFrameCallback((_) => _showGuideDialog());
+     loadGeoJson();
   }
+  Future<void> loadGeoJson() async {
+  List<String> geoJsonFiles = [
+    "assets/geojson/Room.geojson",
+    "assets/geojson/Wall.geojson",
+    "assets/geojson/Hallways.geojson",
+    "assets/geojson/Doors.geojson",
+    "assets/geojson/POI.geojson",
+  ];
+
+  for (String path in geoJsonFiles) {
+    try {
+      String geoJsonData = await rootBundle.loadString(path);
+      geoJsonParser.parseGeoJsonAsString(geoJsonData);
+      print("Loaded GeoJSON: $path");
+    } catch (e) {
+      print("Lỗi load GeoJSON từ $path: $e");
+    }
+  }
+
+  print("Polygons: ${geoJsonParser.polygons.length}");
+  print("Polylines: ${geoJsonParser.polylines.length}");
+  print("Markers: ${geoJsonParser.markers.length}");
+
+  setState(() {});
+}
+
+void _showPOIDialog(Marker marker) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text("Thông tin POI"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text("Tọa độ: ${marker.point.latitude}, ${marker.point.longitude}"),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text("Đóng"),
+          ),
+        ],
+      );
+    },
+  );
+}
 
   void getCategories() {
     categories = CategoryModel.getCategories();
@@ -64,11 +116,14 @@ class _HomePageState extends State<HomePage> {
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
-                  setState(() {
-                    _isDialogDismissed = true;
-                  });
-                  Navigator.of(context).pop();
-                },
+                    Navigator.of(context).pop();
+                    Future.delayed(Duration(milliseconds: 300), () {
+                      setState(() {
+                        _isDialogDismissed = true;
+                      });
+                    });
+                  },
+
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   shape: RoundedRectangleBorder(
@@ -114,7 +169,8 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               SizedBox(height: 20),
-              _isDialogDismissed ? _buildMapSection() : Container(),
+             Expanded(child: _buildMapSection()),
+
             ],
           ),
           Positioned(
@@ -214,27 +270,38 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildMapSection() {
-    return Expanded(
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.black, width: 2),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: ClipRRect(
-          borderRadius:
-              BorderRadius.circular(18), // Adjust to fit within the border
-          child: PhotoView(
-            imageProvider: AssetImage("../assets/map_test.jpg"),
-            minScale: PhotoViewComputedScale.contained,
-            maxScale: PhotoViewComputedScale.covered * 2,
-            initialScale: _photoViewScale, // Set initial scale to 2x
-            enableRotation: true,
-            backgroundDecoration: BoxDecoration(
-              color: Colors.white,
-            ),
-          ),
-        ),
+    return FlutterMap(
+      options: MapOptions(
+        center: LatLng(10.7769, 106.7009),
+        zoom: 18,
       ),
+      children: [
+        TileLayer(
+          urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          subdomains: ['a', 'b', 'c'],
+        ),
+        if (geoJsonParser.polygons.isNotEmpty)
+          PolygonLayer(polygons: geoJsonParser.polygons),
+        if (geoJsonParser.polylines.isNotEmpty)
+          PolylineLayer(polylines: geoJsonParser.polylines),
+        if (geoJsonParser.markers.isNotEmpty)
+  MarkerLayer(
+    markers: geoJsonParser.markers.map((marker) {
+      return Marker(
+        width: 40.0,
+        height: 40.0,
+        point: marker.point,
+        child: GestureDetector(
+          onTap: () {
+            _showPOIDialog(marker);
+          },
+          child: Icon(Icons.location_on, color: Colors.red, size: 40),
+        ),
+      );
+    }).toList(),
+  ),
+
+      ],
     );
   }
 
