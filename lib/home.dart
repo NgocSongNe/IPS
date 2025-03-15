@@ -9,7 +9,9 @@ import 'package:photo_view/photo_view.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_geojson/flutter_map_geojson.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:flutter_application_1/ultils/wifi_scanner.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:wifi_scan/wifi_scan.dart';
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 
@@ -181,7 +183,7 @@ void _showPOIDialog(Marker marker) {
                 FloatingActionButton(
                   heroTag: "location_button",
                   onPressed: () {
-                    // Add your location button functionality here
+                    // Thêm chức năng định vị tại đây
                   },
                   backgroundColor: Colors.yellow,
                   child: Icon(Icons.my_location, color: Colors.black),
@@ -196,6 +198,18 @@ void _showPOIDialog(Marker marker) {
                   },
                   backgroundColor: Colors.white,
                   child: Icon(Icons.map, color: Colors.black),
+                ),
+                SizedBox(height: 10), // Khoảng cách giữa các nút
+                FloatingActionButton(
+                  heroTag: "wifi_scan_button",
+                  onPressed: () async {
+                    List<WiFiAccessPoint> wifiList = await WifiScanner.scanWiFi();
+                    for (var wifi in wifiList) {
+                      print("📡 SSID: ${wifi.ssid}, RSSI: ${wifi.level} dBm");
+                    }
+                  },
+                  backgroundColor: Colors.blue,
+                  child: Icon(Icons.wifi, color: Colors.white),
                 ),
               ],
             ),
