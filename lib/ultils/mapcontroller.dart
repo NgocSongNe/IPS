@@ -1,4 +1,3 @@
-// mapcontroller.dart
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -13,20 +12,30 @@ class CustomMapController {
     _wifiPredictor = WiFiPredictor();
   }
 
-  // Phương thức di chuyển bản đồ đến vị trí người dùng
   void moveToLocation(LatLng location, double zoom) {
     _mapController.move(location, zoom);
   }
 
-  // Quét WiFi và dự đoán vị trí
+  Future<void> loadModel() async {
+    await _wifiPredictor.loadModel();
+  }
+
   Future<void> scanAndPredictLocation() async {
     if (await WiFiScanner.checkPermissions()) {
       List<WiFiAccessPoint> wifiList = await WiFiScanner.scanWiFi();
       if (wifiList.isNotEmpty) {
+        // Chọn 3 tín hiệu mạnh nhất hoặc thêm giá trị mặc định nếu thiếu
         List<double> rssiInput = wifiList.map((ap) => ap.level.toDouble()).toList();
+        if (rssiInput.length > 3) {
+          rssiInput.sort((a, b) => b.compareTo(a));
+          rssiInput = rssiInput.sublist(0, 3);
+        } else if (rssiInput.length < 3) {
+          while (rssiInput.length < 3) {
+            rssiInput.add(-100.0);
+          }
+        }
         List<double> position = await _wifiPredictor.predict(rssiInput);
-        // Di chuyển bản đồ đến vị trí người dùng
-        moveToLocation(LatLng(position[0], position[1]), 18); // Cập nhật với zoom level 18
+        moveToLocation(LatLng(position[0], position[1]), 18);
       } else {
         print("⚠️ Không tìm thấy mạng WiFi nào.");
       }
@@ -35,37 +44,39 @@ class CustomMapController {
 }
 
 class WiFiScanner {
-  // Kiểm tra & yêu cầu quyền truy cập WiFi
   static Future<bool> checkPermissions() async {
-    if (await Permission.locationWhenInUse.request().isGranted &&
-        await Permission.locationAlways.request().isGranted &&
-        await Permission.nearbyWifiDevices.request().isGranted) {
+    var statusWhenInUse = await Permission.locationWhenInUse.request();
+    var statusAlways = await Permission.locationAlways.request();
+    var statusNearby = await Permission.nearbyWifiDevices.request();
+
+    if (statusWhenInUse.isGranted && statusAlways.isGranted && statusNearby.isGranted) {
       return true;
     }
-    print("❌ Quyền truy cập WiFi bị từ chối!");
+
+    if (await Permission.locationWhenInUse.isPermanentlyDenied ||
+        await Permission.locationAlways.isPermanentlyDenied ||
+        await Permission.nearbyWifiDevices.isPermanentlyDenied) {
+      openAppSettings();
+      return false;
+    }
+
+    print("❌ Quyên truy cập WiFi bị từ chối!");
     return false;
   }
 
-  // Quét danh sách WiFi hiện có
   static Future<List<WiFiAccessPoint>> scanWiFi() async {
     bool hasPermission = await checkPermissions();
     if (!hasPermission) return [];
 
     try {
-      // Kiểm tra xem có thể quét WiFi không
       final canScan = await WiFiScan.instance.canStartScan();
       if (canScan != CanStartScan.yes) {
-        print("❌ Thiết bị không hỗ trợ quét WiFi hoặc thiếu quyền!");
+        print("❌ Thiết bị không hỗ trợ quét WiFi hoặc thiếu quyên!");
         return [];
       }
 
-      // Bắt đầu quét WiFi
       await WiFiScan.instance.startScan();
-
-      // Chờ 2 giây để có dữ liệu
       await Future.delayed(Duration(seconds: 2));
-
-      // Lấy danh sách WiFi
       List<WiFiAccessPoint> wifiList = await WiFiScan.instance.getScannedResults();
 
       if (wifiList.isEmpty) {
@@ -82,27 +93,19 @@ class WiFiScanner {
 class WiFiPredictor {
   late Interpreter _interpreter;
 
-  // Load the model
   Future<void> loadModel() async {
     _interpreter = await Interpreter.fromAsset('assets/model.tflite');
     print("Model loaded successfully");
   }
 
-  // Predict location from RSSI values
   Future<List<double>> predict(List<double> input) async {
     if (_interpreter == null) {
       throw Exception("Model is not loaded");
     }
 
-    // Reshape input data if needed
-    var inputData = [input]; // Reshaped as a 2D array: [[rssi1, rssi2, ...]]
-    
-    // Output data with a shape of [1, 2] (latitude, longitude)
-    var outputData = List.filled(2, 0.0); // [lat, lng]
-    
-    // Run the model prediction
+    var inputData = [input];
+    var outputData = List.filled(2, 0.0);
     _interpreter.run(inputData, outputData);
-    
     print("Prediction result: $outputData");
     return outputData;
   }
