@@ -11,7 +11,10 @@ import 'package:flutter_map_geojson/flutter_map_geojson.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_application_1/ultils/wifi_scanner.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:wifi_scan/wifi_scan.dart';
+import 'package:wifi_scan/wifi_scan.dart';// Thêm import cho tflite_flutter
+import 'package:flutter_application_1/ultils/wifipredictor.dart';
+import 'package:flutter_application_1/ultils/mapcontroller.dart';
+import 'package:tflite_flutter/tflite_flutter.dart';
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 
@@ -24,65 +27,82 @@ class _HomePageState extends State<HomePage> {
   int currentPageIndex = 0;
   List<CategoryModel> categories = [];
   List<MapModel> maps = [];
-  bool _isDialogDismissed = false; // Kiểm soát việc tắt hộp thoại
+  bool _isDialogDismissed = false;
   PhotoViewComputedScale _photoViewScale = PhotoViewComputedScale.covered * 1;
   final GeoJsonParser geoJsonParser = GeoJsonParser();
+  
+  // Thêm biến cho WiFiPredictor và vị trí người dùng
+  late WiFiPredictor _wifiPredictor;
+  LatLng? _userLocation;
+  bool _isModelLoaded = false;
   @override
   void initState() {
     super.initState();
     getCategories();
     getMaps();
     WidgetsBinding.instance.addPostFrameCallback((_) => _showGuideDialog());
-     loadGeoJson();
+    loadGeoJson();
+    
+    // Khởi tạo WiFiPredictor
+    _wifiPredictor = WiFiPredictor();
+    _initializePredictor();
   }
+
+  Future<void> _initializePredictor() async {
+    await _wifiPredictor.loadModel();
+    setState(() {
+      _isModelLoaded = true; // Model is now loaded
+    });
+  }
+
   Future<void> loadGeoJson() async {
-  List<String> geoJsonFiles = [
-    "assets/geojson/Room.geojson",
-    "assets/geojson/Wall.geojson",
-    "assets/geojson/Hallways.geojson",
-    "assets/geojson/Doors.geojson",
-    "assets/geojson/POI.geojson",
-  ];
+    List<String> geoJsonFiles = [
+      "assets/geojson/Room.geojson",
+      "assets/geojson/Wall.geojson",
+      "assets/geojson/Hallways.geojson",
+      "assets/geojson/Doors.geojson",
+      "assets/geojson/POI.geojson",
+    ];
 
-  for (String path in geoJsonFiles) {
-    try {
-      String geoJsonData = await rootBundle.loadString(path);
-      geoJsonParser.parseGeoJsonAsString(geoJsonData);
-      print("Loaded GeoJSON: $path");
-    } catch (e) {
-      print("Lỗi load GeoJSON từ $path: $e");
+    for (String path in geoJsonFiles) {
+      try {
+        String geoJsonData = await rootBundle.loadString(path);
+        geoJsonParser.parseGeoJsonAsString(geoJsonData);
+        print("Loaded GeoJSON: $path");
+      } catch (e) {
+        print("Lỗi load GeoJSON từ $path: $e");
+      }
     }
+
+    print("Polygons: ${geoJsonParser.polygons.length}");
+    print("Polylines: ${geoJsonParser.polylines.length}");
+    print("Markers: ${geoJsonParser.markers.length}");
+
+    setState(() {});
   }
 
-  print("Polygons: ${geoJsonParser.polygons.length}");
-  print("Polylines: ${geoJsonParser.polylines.length}");
-  print("Markers: ${geoJsonParser.markers.length}");
-
-  setState(() {});
-}
-
-void _showPOIDialog(Marker marker) {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text("Thông tin POI"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text("Tọa độ: ${marker.point.latitude}, ${marker.point.longitude}"),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text("Đóng"),
+  void _showPOIDialog(Marker marker) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Thông tin POI"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Tọa độ: ${marker.point.latitude}, ${marker.point.longitude}"),
+            ],
           ),
-        ],
-      );
-    },
-  );
-}
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text("Đóng"),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   void getCategories() {
     categories = CategoryModel.getCategories();
@@ -95,7 +115,7 @@ void _showPOIDialog(Marker marker) {
   void _showGuideDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false, // Ngăn chặn đóng hộp thoại khi nhấn ngoài
+      barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
@@ -118,14 +138,13 @@ void _showPOIDialog(Marker marker) {
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
-                    Navigator.of(context).pop();
-                    Future.delayed(Duration(milliseconds: 300), () {
-                      setState(() {
-                        _isDialogDismissed = true;
-                      });
+                  Navigator.of(context).pop();
+                  Future.delayed(Duration(milliseconds: 300), () {
+                    setState(() {
+                      _isDialogDismissed = true;
                     });
-                  },
-
+                  });
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   shape: RoundedRectangleBorder(
@@ -171,8 +190,7 @@ void _showPOIDialog(Marker marker) {
                 ),
               ),
               SizedBox(height: 20),
-             Expanded(child: _buildMapSection()),
-
+              Expanded(child: _buildMapSection()),
             ],
           ),
           Positioned(
@@ -182,13 +200,33 @@ void _showPOIDialog(Marker marker) {
               children: [
                 FloatingActionButton(
                   heroTag: "location_button",
-                  onPressed: () {
-                    // Thêm chức năng định vị tại đây
+                  onPressed: () async {
+                    if (_isModelLoaded) {
+                      // Quét WiFi và dự đoán vị trí
+                      List<WiFiAccessPoint> wifiList = await WifiScanner.scanWiFi();
+                      if (wifiList.isNotEmpty) {
+                        List<double> rssiInput = wifiList.map((ap) => ap.level.toDouble()).toList();
+                        List<double> position = await _wifiPredictor.predict(rssiInput);
+                        setState(() {
+                          _userLocation = LatLng(position[0], position[1]);
+                        });
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Không thể quét WiFi")),
+                        );
+                      }
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Model is not loaded yet!")),
+                      );
+                    }
                   },
                   backgroundColor: Colors.yellow,
                   child: Icon(Icons.my_location, color: Colors.black),
                 ),
+                  
                 SizedBox(height: 10),
+
                 FloatingActionButton(
                   heroTag: "zoom_button",
                   onPressed: () {
@@ -199,7 +237,7 @@ void _showPOIDialog(Marker marker) {
                   backgroundColor: Colors.white,
                   child: Icon(Icons.map, color: Colors.black),
                 ),
-                SizedBox(height: 10), // Khoảng cách giữa các nút
+                SizedBox(height: 10),
                 FloatingActionButton(
                   heroTag: "wifi_scan_button",
                   onPressed: () async {
@@ -247,7 +285,6 @@ void _showPOIDialog(Marker marker) {
               hintText: '   Tìm kiếm địa điểm ...',
               hintStyle:
                   GoogleFonts.openSans(color: Colors.grey[00], fontSize: 18),
-              //prefixIcon: Icon(Icons.gps_fixed, size: 25, color: Colors.black),
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -286,7 +323,7 @@ void _showPOIDialog(Marker marker) {
   Widget _buildMapSection() {
     return FlutterMap(
       options: MapOptions(
-        center: LatLng(10.7769, 106.7009),
+        center: _userLocation ?? LatLng(10.7769, 106.7009), // Dùng vị trí người dùng nếu có
         zoom: 18,
       ),
       children: [
@@ -299,22 +336,32 @@ void _showPOIDialog(Marker marker) {
         if (geoJsonParser.polylines.isNotEmpty)
           PolylineLayer(polylines: geoJsonParser.polylines),
         if (geoJsonParser.markers.isNotEmpty)
-  MarkerLayer(
-    markers: geoJsonParser.markers.map((marker) {
-      return Marker(
-        width: 40.0,
-        height: 40.0,
-        point: marker.point,
-        child: GestureDetector(
-          onTap: () {
-            _showPOIDialog(marker);
-          },
-          child: Icon(Icons.location_on, color: Colors.red, size: 40),
-        ),
-      );
-    }).toList(),
-  ),
-
+          MarkerLayer(
+            markers: geoJsonParser.markers.map((marker) {
+              return Marker(
+                width: 40.0,
+                height: 40.0,
+                point: marker.point,
+                child: GestureDetector(
+                  onTap: () {
+                    _showPOIDialog(marker);
+                  },
+                  child: Icon(Icons.location_on, color: Colors.red, size: 40),
+                ),
+              );
+            }).toList(),
+          ),
+        if (_userLocation != null) // Hiển thị vị trí người dùng
+          MarkerLayer(
+            markers: [
+              Marker(
+                width: 40.0,
+                height: 40.0,
+                point: _userLocation!,
+                child: Icon(Icons.person_pin_circle, color: Colors.blue, size: 40),
+              ),
+            ],
+          ),
       ],
     );
   }
@@ -357,5 +404,21 @@ void _showPOIDialog(Marker marker) {
         ),
       ],
     );
+  }
+}
+
+// Định nghĩa lớp WiFiPredictor
+class WiFiPredictor {
+  late Interpreter _interpreter;
+
+  Future<void> loadModel() async {
+    _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+  }
+
+  Future<List<double>> predict(List<double> input) async {
+    var inputData = [input];
+    var outputData = List.filled(1 * 2, 0.0).reshape([1, 2]); // Giả sử đầu ra là [lat, lng]
+    _interpreter.run(inputData, outputData);
+    return outputData[0];
   }
 }
