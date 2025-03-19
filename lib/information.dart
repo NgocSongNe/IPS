@@ -1,11 +1,11 @@
-import 'dart:ui';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/account.dart';
 import 'package:flutter_application_1/home.dart';
-import 'package:flutter_application_1/information.dart';
 import 'package:flutter_application_1/models/category_model.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'Location.dart';
 
 class InformationPage extends StatefulWidget {
@@ -22,14 +22,97 @@ class _InformationPageState extends State<InformationPage> {
   @override
   void initState() {
     super.initState();
-    // Initialize with some post cards
+    // Initialize with some post cards (mô phỏng)
     postCards = List.generate(3, (index) => _buildPostCard());
   }
 
-  void _addPostCard() {
-    setState(() {
-      postCards.add(_buildPostCard());
-    });
+  void _showAddPostDialog() {
+    final TextEditingController _captionController = TextEditingController();
+    File? _postImage;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text('Thêm bài đăng mới'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _captionController,
+                  decoration: InputDecoration(labelText: 'Nhập caption'),
+                  maxLines: 3,
+                ),
+                SizedBox(height: 10),
+                _postImage == null
+                    ? ElevatedButton(
+                        onPressed: () async {
+                          final picker = ImagePicker();
+                          final pickedFile = await picker.pickImage(
+                              source: ImageSource.gallery);
+                          if (pickedFile != null) {
+                            setDialogState(() {
+                              _postImage = File(pickedFile.path);
+                            });
+                          }
+                        },
+                        child: Text('Chọn ảnh'),
+                      )
+                    : Column(
+                        children: [
+                          Image.file(_postImage!, height: 100),
+                          TextButton(
+                            onPressed: () async {
+                              final picker = ImagePicker();
+                              final pickedFile = await picker.pickImage(
+                                  source: ImageSource.gallery);
+                              if (pickedFile != null) {
+                                setDialogState(() {
+                                  _postImage = File(pickedFile.path);
+                                });
+                              }
+                            },
+                            child: Text('Thay đổi ảnh'),
+                          ),
+                        ],
+                      ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text('Hủy'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (_captionController.text.isNotEmpty || _postImage != null) {
+                  setState(() {
+                    postCards.add(_buildPostCard(
+                      caption: _captionController.text.isNotEmpty
+                          ? _captionController.text
+                          : 'Không có caption',
+                      imagePath: _postImage?.path ?? '',
+                    ));
+                  });
+                  Navigator.pop(dialogContext);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Đã thêm bài đăng!')),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text('Vui lòng nhập caption hoặc chọn ảnh!')),
+                  );
+                }
+              },
+              child: Text('Đăng'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -38,7 +121,7 @@ class _InformationPageState extends State<InformationPage> {
       backgroundColor: Color(0xffFFEBCD),
       bottomNavigationBar: _bottomNavBar(),
       floatingActionButton: FloatingActionButton(
-        onPressed: _addPostCard,
+        onPressed: _showAddPostDialog,
         child: Icon(Icons.add),
         backgroundColor: Colors.lightGreen,
       ),
@@ -78,7 +161,6 @@ class _InformationPageState extends State<InformationPage> {
         },
         child: AbsorbPointer(
           child: TextFormField(
-            //controller: searchPlaceController,
             decoration: InputDecoration(
               border: InputBorder.none,
               hintText: 'Tìm kiếm địa điểm ...',
@@ -146,7 +228,9 @@ class _InformationPageState extends State<InformationPage> {
     );
   }
 
-  Widget _buildPostCard() {
+  Widget _buildPostCard(
+      {String caption = 'Mô phỏng nội dung',
+      String imagePath = '../assets/new_year_banner.jpg'}) {
     return Card(
       margin: const EdgeInsets.all(12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -166,19 +250,26 @@ class _InformationPageState extends State<InformationPage> {
           Padding(
             padding: const EdgeInsets.all(10.0),
             child: Text(
-              'Chúc Quý bạn đọc Thư viện Trường đại học Đà Lạt cùng gia đình một mùa xuân an khang, thịnh vượng, vạn sự như ý.',
+              caption,
               style: GoogleFonts.openSans(fontSize: 14),
             ),
           ),
-          ClipRRect(
-            borderRadius:
-                const BorderRadius.vertical(bottom: Radius.circular(10)),
-            child: Image.asset(
-              '../assets/new_year_banner.jpg',
-              fit: BoxFit.cover,
-              width: double.infinity,
+          if (imagePath.isNotEmpty)
+            ClipRRect(
+              borderRadius:
+                  const BorderRadius.vertical(bottom: Radius.circular(10)),
+              child: imagePath.contains('assets')
+                  ? Image.asset(
+                      imagePath,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                    )
+                  : Image.file(
+                      File(imagePath),
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                    ),
             ),
-          ),
         ],
       ),
     );
@@ -190,27 +281,20 @@ class _InformationPageState extends State<InformationPage> {
         setState(() {
           currentPageIndex = index;
         });
-
-        // Điều hướng đến các trang tương ứng khi chọn icon
         if (index == 0) {
           Navigator.push(
             context,
-            MaterialPageRoute(
-                builder: (context) => HomePage()), // Giữ lại trang HomePage
+            MaterialPageRoute(builder: (context) => HomePage()),
           );
         } else if (index == 1) {
           Navigator.push(
             context,
-            MaterialPageRoute(
-                builder: (context) =>
-                    InformationPage()), // Điều hướng đến InformationPage
+            MaterialPageRoute(builder: (context) => InformationPage()),
           );
         } else if (index == 2) {
           Navigator.push(
             context,
-            MaterialPageRoute(
-                builder: (context) =>
-                    AccountPage()), // Điều hướng đến AccountPage
+            MaterialPageRoute(builder: (context) => AccountPage()),
           );
         }
       },

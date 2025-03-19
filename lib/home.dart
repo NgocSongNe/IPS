@@ -4,6 +4,7 @@ import 'package:flutter_application_1/account.dart';
 import 'package:flutter_application_1/information.dart';
 import 'package:flutter_application_1/models/category_model.dart';
 import 'package:flutter_application_1/models/map_model.dart';
+import 'package:flutter_application_1/POISelectionScreen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -12,6 +13,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_application_1/ultils/wifi_scanner.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:wifi_scan/wifi_scan.dart';
+
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 
@@ -20,6 +22,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final MapController mapController = MapController();
   TextEditingController searchPlaceController = TextEditingController();
   int currentPageIndex = 0;
   List<CategoryModel> categories = [];
@@ -33,56 +36,80 @@ class _HomePageState extends State<HomePage> {
     getCategories();
     getMaps();
     WidgetsBinding.instance.addPostFrameCallback((_) => _showGuideDialog());
-     loadGeoJson();
+    loadGeoJson();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focusOnPOIs());
   }
-  Future<void> loadGeoJson() async {
-  List<String> geoJsonFiles = [
-    "assets/geojson/Room.geojson",
-    "assets/geojson/Wall.geojson",
-    "assets/geojson/Hallways.geojson",
-    "assets/geojson/Doors.geojson",
-    "assets/geojson/POI.geojson",
-  ];
 
-  for (String path in geoJsonFiles) {
-    try {
-      String geoJsonData = await rootBundle.loadString(path);
-      geoJsonParser.parseGeoJsonAsString(geoJsonData);
-      print("Loaded GeoJSON: $path");
-    } catch (e) {
-      print("Lỗi load GeoJSON từ $path: $e");
+  Future<void> loadGeoJson() async {
+    List<String> geoJsonFiles = [
+      "assets/geojson/Room.geojson",
+      "assets/geojson/Wall.geojson",
+      "assets/geojson/Hallways.geojson",
+      "assets/geojson/Doors.geojson",
+      "assets/geojson/POI.geojson",
+    ];
+
+    for (String path in geoJsonFiles) {
+      try {
+        String geoJsonData = await rootBundle.loadString(path);
+        geoJsonParser.parseGeoJsonAsString(geoJsonData);
+        print("Loaded GeoJSON: $path");
+      } catch (e) {
+        print("Lỗi load GeoJSON từ $path: $e");
+      }
+    }
+
+    print("Polygons: ${geoJsonParser.polygons.length}");
+    print("Polylines: ${geoJsonParser.polylines.length}");
+    print("Markers: ${geoJsonParser.markers.length}");
+
+    setState(() {});
+  }
+
+  void _focusOnPOIs() {
+    if (geoJsonParser.markers.isNotEmpty) {
+      final latitudes =
+          geoJsonParser.markers.map((m) => m.point.latitude).toList();
+      final longitudes =
+          geoJsonParser.markers.map((m) => m.point.longitude).toList();
+
+      final bounds = LatLngBounds(
+        LatLng(latitudes.reduce((a, b) => a < b ? a : b),
+            longitudes.reduce((a, b) => a < b ? a : b)),
+        LatLng(latitudes.reduce((a, b) => a > b ? a : b),
+            longitudes.reduce((a, b) => a > b ? a : b)),
+      );
+
+      setState(() {
+        mapController.fitBounds(bounds,
+            options: FitBoundsOptions(padding: EdgeInsets.all(50)));
+      });
     }
   }
 
-  print("Polygons: ${geoJsonParser.polygons.length}");
-  print("Polylines: ${geoJsonParser.polylines.length}");
-  print("Markers: ${geoJsonParser.markers.length}");
-
-  setState(() {});
-}
-
-void _showPOIDialog(Marker marker) {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text("Thông tin POI"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text("Tọa độ: ${marker.point.latitude}, ${marker.point.longitude}"),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text("Đóng"),
+  void _showPOIDialog(Marker marker) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Thông tin POI"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                  "Tọa độ: ${marker.point.latitude}, ${marker.point.longitude}"),
+            ],
           ),
-        ],
-      );
-    },
-  );
-}
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text("Đóng"),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   void getCategories() {
     categories = CategoryModel.getCategories();
@@ -118,14 +145,13 @@ void _showPOIDialog(Marker marker) {
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
-                    Navigator.of(context).pop();
-                    Future.delayed(Duration(milliseconds: 300), () {
-                      setState(() {
-                        _isDialogDismissed = true;
-                      });
+                  Navigator.of(context).pop();
+                  Future.delayed(Duration(milliseconds: 300), () {
+                    setState(() {
+                      _isDialogDismissed = true;
                     });
-                  },
-
+                  });
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   shape: RoundedRectangleBorder(
@@ -171,8 +197,7 @@ void _showPOIDialog(Marker marker) {
                 ),
               ),
               SizedBox(height: 20),
-             Expanded(child: _buildMapSection()),
-
+              Expanded(child: _buildMapSection()),
             ],
           ),
           Positioned(
@@ -188,22 +213,23 @@ void _showPOIDialog(Marker marker) {
                   backgroundColor: Colors.yellow,
                   child: Icon(Icons.my_location, color: Colors.black),
                 ),
-                SizedBox(height: 10),
-                FloatingActionButton(
-                  heroTag: "zoom_button",
-                  onPressed: () {
-                    setState(() {
-                      _photoViewScale = PhotoViewComputedScale.covered * 0;
-                    });
-                  },
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.map, color: Colors.black),
-                ),
+                // SizedBox(height: 10),
+                // FloatingActionButton(
+                //   heroTag: "zoom_button",
+                //   onPressed: () {
+                //     setState(() {
+                //       _photoViewScale = PhotoViewComputedScale.covered * 0;
+                //     });
+                //   },
+                //   backgroundColor: Colors.white,
+                //   child: Icon(Icons.map, color: Colors.black),
+                // ),
                 SizedBox(height: 10), // Khoảng cách giữa các nút
                 FloatingActionButton(
                   heroTag: "wifi_scan_button",
                   onPressed: () async {
-                    List<WiFiAccessPoint> wifiList = await WifiScanner.scanWiFi();
+                    List<WiFiAccessPoint> wifiList =
+                        await WifiScanner.scanWiFi();
                     for (var wifi in wifiList) {
                       print("📡 SSID: ${wifi.ssid}, RSSI: ${wifi.level} dBm");
                     }
@@ -236,7 +262,7 @@ void _showPOIDialog(Marker marker) {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => SuggestedPlacesScreen()),
+            MaterialPageRoute(builder: (context) => POISelectionScreen()),
           );
         },
         child: AbsorbPointer(
@@ -285,6 +311,7 @@ void _showPOIDialog(Marker marker) {
 
   Widget _buildMapSection() {
     return FlutterMap(
+      mapController: mapController,
       options: MapOptions(
         center: LatLng(10.7769, 106.7009),
         zoom: 18,
@@ -299,22 +326,21 @@ void _showPOIDialog(Marker marker) {
         if (geoJsonParser.polylines.isNotEmpty)
           PolylineLayer(polylines: geoJsonParser.polylines),
         if (geoJsonParser.markers.isNotEmpty)
-  MarkerLayer(
-    markers: geoJsonParser.markers.map((marker) {
-      return Marker(
-        width: 40.0,
-        height: 40.0,
-        point: marker.point,
-        child: GestureDetector(
-          onTap: () {
-            _showPOIDialog(marker);
-          },
-          child: Icon(Icons.location_on, color: Colors.red, size: 40),
-        ),
-      );
-    }).toList(),
-  ),
-
+          MarkerLayer(
+            markers: geoJsonParser.markers.map((marker) {
+              return Marker(
+                width: 40.0,
+                height: 40.0,
+                point: marker.point,
+                child: GestureDetector(
+                  onTap: () {
+                    _showPOIDialog(marker);
+                  },
+                  child: Icon(Icons.location_on, color: Colors.red, size: 40),
+                ),
+              );
+            }).toList(),
+          ),
       ],
     );
   }
