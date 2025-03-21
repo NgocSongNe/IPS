@@ -208,7 +208,8 @@ class _HomePageState extends State<HomePage> {
                 FloatingActionButton(
                   heroTag: "location_button",
                   onPressed: () {
-                    // Thêm chức năng định vị tại đây
+                    mapController.move(
+                        LatLng(11.957222760551929, 108.44508052756397), 18);
                   },
                   backgroundColor: Colors.yellow,
                   child: Icon(Icons.my_location, color: Colors.black),
