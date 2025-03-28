@@ -14,27 +14,29 @@ import 'package:flutter_application_1/ultils/wifi_scanner.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'dart:convert'; // Import for jsonDecode
 import 'package:wifi_scan/wifi_scan.dart';
-import 'package:tflite_flutter/tflite_flutter.dart'; // Thêm thư viện TensorFlow Lite
-import 'package:tflite_flutter/tflite_flutter.dart' as tfl; // Import thêm alias để sử dụng Interpreter
+// import 'package:tflite_flutter/tflite_flutter.dart'; // Thêm thư viện TensorFlow Lite
+// import 'package:tflite_flutter/tflite_flutter.dart' as tfl; // Import thêm alias để sử dụng Interpreter
 // Hỗ trợ xử lý dữ liệu
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
-  }
-
+}
 
 class _HomePageState extends State<HomePage> {
   final MapController mapController = MapController();
   TextEditingController searchPlaceController = TextEditingController();
   int currentPageIndex = 0;
+  bool showLabel = true; // Add this line to control label visibility
   List<CategoryModel> categories = [];
   List<MapModel> maps = [];
   bool _isDialogDismissed = false; // Kiểm soát việc tắt hộp thoại
-  PhotoViewComputedScale _photoViewScale = PhotoViewComputedScale.covered * 1;
+  final PhotoViewComputedScale _photoViewScale =
+      PhotoViewComputedScale.covered * 1;
   final GeoJsonParser geoJsonParser = GeoJsonParser();
+  final double minZoomForPOI = 17.5;
 
   @override
   void initState() {
@@ -66,30 +68,49 @@ class _HomePageState extends State<HomePage> {
             final properties = feature['properties'];
             final geometry = feature['geometry'];
 
-            if (geometry['type'] == 'Point' && path == "assets/geojson/POI.geojson") {
+            if (geometry['type'] == 'Point' &&
+                path == "assets/geojson/POI.geojson") {
               final coordinates = geometry['coordinates'];
               final lat = coordinates[1];
               final lng = coordinates[0];
+              // Lấy tên từ thuộc tính Name trong properties
+              final name = properties['Name'] ?? 'Unknown';
 
               geoJsonParser.markers.add(
                 Marker(
                   point: LatLng(lat, lng),
-                  child: Column(
+                  width: 80.0,
+                  height: 80.0,
+                  child: Stack(
                     children: [
-                      Text(
-                        properties['Name'] ?? "POI", // Lấy tên từ thuộc tính "Name"
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                          backgroundColor: Colors.white.withOpacity(0.7),
+                      // Chỉ hiển thị marker khi zoom >= minZoomForPOI
+                      if (mapController.zoom >= minZoomForPOI)
+                        Column(
+                          children: [
+                            if (showLabel)
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.7),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  name,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                            Icon(
+                              Icons.location_on,
+                              color: Colors.red,
+                              size: 20,
+                            ),
+                          ],
                         ),
-                      ),
-                      Icon(
-                        Icons.location_on,
-                        color: Colors.red,
-                        size: 20,
-                      ),
                     ],
                   ),
                 ),
@@ -117,7 +138,7 @@ class _HomePageState extends State<HomePage> {
                   color: fillColor,
                   borderColor: fillColor.withOpacity(0.8),
                   borderStrokeWidth: 2,
-                  label: properties['Name'], 
+                  label: properties['Name'],
                 ),
               );
             }
@@ -307,8 +328,6 @@ class _HomePageState extends State<HomePage> {
                     for (var wifi in wifiList) {
                       print("📡 SSID: ${wifi.ssid}, RSSI: ${wifi.level} dBm");
                     }
-
-                    
                   },
                   backgroundColor: Colors.blue,
                   child: Icon(Icons.wifi, color: Colors.white),
@@ -391,6 +410,12 @@ class _HomePageState extends State<HomePage> {
       options: MapOptions(
         center: LatLng(10.7769, 106.7009),
         zoom: 18,
+        onMapEvent: (MapEvent event) {
+          if (event is MapEventMoveEnd) {
+            // Cập nhật UI khi zoom thay đổi
+            setState(() {});
+          }
+        },
       ),
       children: [
         TileLayer(
@@ -403,33 +428,7 @@ class _HomePageState extends State<HomePage> {
           PolylineLayer(polylines: geoJsonParser.polylines),
         if (geoJsonParser.markers.isNotEmpty)
           MarkerLayer(
-            markers: geoJsonParser.markers.map((marker) {
-              // Lấy tên từ thuộc tính "Name" trong GeoJSON
-              final name = "POI"; // Default name since 'properties' is not available
-              return Marker(
-                width: 80.0,
-                height: 80.0,
-                point: marker.point,
-                child: Column(
-                  children: [
-                    Text(
-                      name, // Hiển thị tên từ thuộc tính "Name"
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                        backgroundColor: Colors.white.withOpacity(0.7),
-                      ),
-                    ),
-                    Icon(
-                      Icons.location_on,
-                      color: Colors.red,
-                      size: 20, // Kích thước nhỏ hơn
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+            markers: geoJsonParser.markers,
           ),
       ],
     );
