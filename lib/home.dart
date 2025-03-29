@@ -28,6 +28,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final MapController mapController = MapController();
+  double currentZoom = 18.0; // Track the current zoom level
   TextEditingController searchPlaceController = TextEditingController();
   int currentPageIndex = 0;
   List<CategoryModel> categories = [];
@@ -77,7 +78,7 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     children: [
                       Text(
-                        properties['Name'] ?? "POI", // Lấy tên từ thuộc tính "Name"
+                        properties['Name'], // Matches the logic for Polygon label
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -89,6 +90,7 @@ class _HomePageState extends State<HomePage> {
                         Icons.location_on,
                         color: Colors.red,
                         size: 20,
+                        
                       ),
                     ],
                   ),
@@ -117,7 +119,7 @@ class _HomePageState extends State<HomePage> {
                   color: fillColor,
                   borderColor: fillColor.withOpacity(0.8),
                   borderStrokeWidth: 2,
-                  label: properties['Name'], 
+                  label: properties['Name'], // Adjusts the Name of the Polygon
                 ),
               );
             }
@@ -390,7 +392,14 @@ class _HomePageState extends State<HomePage> {
       mapController: mapController,
       options: MapOptions(
         center: LatLng(10.7769, 106.7009),
-        zoom: 18,
+        zoom: currentZoom,
+        onPositionChanged: (position, hasGesture) {
+          if (position.zoom != null) {
+            setState(() {
+              currentZoom = position.zoom!; // Update the current zoom level
+            });
+          }
+        },
       ),
       children: [
         TileLayer(
@@ -404,27 +413,29 @@ class _HomePageState extends State<HomePage> {
         if (geoJsonParser.markers.isNotEmpty)
           MarkerLayer(
             markers: geoJsonParser.markers.map((marker) {
-              // Lấy tên từ thuộc tính "Name" trong GeoJSON
-              final name = "POI"; // Default name since 'properties' is not available
+              final showName = currentZoom >= 20; // Adjust zoom threshold as needed
               return Marker(
                 width: 80.0,
                 height: 80.0,
                 point: marker.point,
                 child: Column(
                   children: [
-                    Text(
-                      name, // Hiển thị tên từ thuộc tính "Name"
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                        backgroundColor: Colors.white.withOpacity(0.7),
+                    if (showName) // Only show Name if zoom level is high enough
+                      Text(
+                        (marker.child as Column).children[0] is Text
+                            ? ((marker.child as Column).children[0] as Text).data ?? "POI"
+                            : "POI",
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                          backgroundColor: Colors.white.withOpacity(0.7),
+                        ),
                       ),
-                    ),
                     Icon(
                       Icons.location_on,
                       color: Colors.red,
-                      size: 20, // Kích thước nhỏ hơn
+                      size: 20,
                     ),
                   ],
                 ),
