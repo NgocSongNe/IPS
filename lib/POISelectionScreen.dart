@@ -6,6 +6,8 @@ import 'dart:convert'; // Required for JSON parsing
 import 'dart:io'; // Required for file reading
 
 class POISelectionScreen extends StatefulWidget {
+  const POISelectionScreen({super.key});
+
   @override
   _POISelectionScreenState createState() => _POISelectionScreenState();
 }
@@ -280,7 +282,9 @@ class _POISelectionScreenState extends State<POISelectionScreen> {
     // Ghi danh sách tường vào console để kiểm tra
     print("Extracted Walls from wallList:");
     for (var wall in walls) {
-      print(wall.map((point) => "(${point.latitude}, ${point.longitude})").toList());
+      print(wall
+          .map((point) => "(${point.latitude}, ${point.longitude})")
+          .toList());
     }
   }
 
@@ -301,7 +305,8 @@ class _POISelectionScreenState extends State<POISelectionScreen> {
         // Kiểm tra xem đoạn đường có cắt qua tường không
         if (!_isPathBlocked(coordinates, otherCoordinates)) {
           double distance = _calculateDistance(coordinates, otherCoordinates);
-          generatedGraph[poiName]!.add({"name": otherName, "distance": distance});
+          generatedGraph[poiName]!
+              .add({"name": otherName, "distance": distance});
         }
       }
     }
@@ -398,7 +403,8 @@ class _POISelectionScreenState extends State<POISelectionScreen> {
 
     // Chuyển đổi danh sách tên POI thành danh sách tọa độ
     return path.map((name) {
-      return poiList.firstWhere((poi) => poi['name'] == name)['coordinates'] as LatLng;
+      return poiList.firstWhere((poi) => poi['name'] == name)['coordinates']
+          as LatLng;
     }).toList();
   }
 
@@ -410,7 +416,8 @@ class _POISelectionScreenState extends State<POISelectionScreen> {
     double a = sin(dLat / 2) * sin(dLat / 2) +
         cos(point1.latitude * (pi / 180)) *
             cos(point2.latitude * (pi / 180)) *
-            sin(dLon / 2) * sin(dLon / 2);
+            sin(dLon / 2) *
+            sin(dLon / 2);
     double c = 2 * atan2(sqrt(a), sqrt(1 - a));
     return earthRadius * c * 1000; // Trả về khoảng cách tính bằng mét
   }

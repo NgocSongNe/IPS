@@ -27,8 +27,8 @@ class _InformationPageState extends State<InformationPage> {
   }
 
   void _showAddPostDialog() {
-    final TextEditingController _captionController = TextEditingController();
-    File? _postImage;
+    final TextEditingController captionController = TextEditingController();
+    File? postImage;
 
     showDialog(
       context: context,
@@ -40,12 +40,12 @@ class _InformationPageState extends State<InformationPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
-                  controller: _captionController,
+                  controller: captionController,
                   decoration: InputDecoration(labelText: 'Nhập caption'),
                   maxLines: 3,
                 ),
                 SizedBox(height: 10),
-                _postImage == null
+                postImage == null
                     ? ElevatedButton(
                         onPressed: () async {
                           final picker = ImagePicker();
@@ -53,7 +53,7 @@ class _InformationPageState extends State<InformationPage> {
                               source: ImageSource.gallery);
                           if (pickedFile != null) {
                             setDialogState(() {
-                              _postImage = File(pickedFile.path);
+                              postImage = File(pickedFile.path);
                             });
                           }
                         },
@@ -61,7 +61,7 @@ class _InformationPageState extends State<InformationPage> {
                       )
                     : Column(
                         children: [
-                          Image.file(_postImage!, height: 100),
+                          Image.file(postImage!, height: 100),
                           TextButton(
                             onPressed: () async {
                               final picker = ImagePicker();
@@ -69,7 +69,7 @@ class _InformationPageState extends State<InformationPage> {
                                   source: ImageSource.gallery);
                               if (pickedFile != null) {
                                 setDialogState(() {
-                                  _postImage = File(pickedFile.path);
+                                  postImage = File(pickedFile.path);
                                 });
                               }
                             },
@@ -87,13 +87,13 @@ class _InformationPageState extends State<InformationPage> {
             ),
             TextButton(
               onPressed: () {
-                if (_captionController.text.isNotEmpty || _postImage != null) {
+                if (captionController.text.isNotEmpty || postImage != null) {
                   setState(() {
                     postCards.add(_buildPostCard(
-                      caption: _captionController.text.isNotEmpty
-                          ? _captionController.text
+                      caption: captionController.text.isNotEmpty
+                          ? captionController.text
                           : 'Không có caption',
-                      imagePath: _postImage?.path ?? '',
+                      imagePath: postImage?.path ?? '',
                     ));
                   });
                   Navigator.pop(dialogContext);
@@ -122,8 +122,8 @@ class _InformationPageState extends State<InformationPage> {
       bottomNavigationBar: _bottomNavBar(),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddPostDialog,
-        child: Icon(Icons.add),
         backgroundColor: Colors.lightGreen,
+        child: Icon(Icons.add),
       ),
       body: SingleChildScrollView(
         child: Column(

@@ -3,9 +3,8 @@ import 'package:flutter_application_1/home.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 
-
 class WelcomePage extends StatefulWidget {
-  WelcomePage({super.key});
+  const WelcomePage({super.key});
   @override
   State<WelcomePage> createState() => _WelcomePageState();
 }
@@ -14,7 +13,7 @@ class _WelcomePageState extends State<WelcomePage> {
   @override
   Widget build(BuildContext context) {
     return Material(
-        child: Container(
+        child: SizedBox(
       width: MediaQuery.of(context).size.width,
       height: MediaQuery.of(context).size.height,
       child: Stack(
@@ -51,10 +50,8 @@ class _WelcomePageState extends State<WelcomePage> {
               child: Column(
                 children: [
                   Text(
-
                     "Thư viện Trường Đại học Đà Lạt kính chào",
                     style: GoogleFonts.openSans(
-
                       fontSize: 19,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 1,
@@ -68,12 +65,10 @@ class _WelcomePageState extends State<WelcomePage> {
                     child: Text(
                       "Thư viện là nơi cung cấp tài liệu học tập và nghiên cứu chủ yếu cho cán bộ và sinh viên tại trường Đại Học Đà Lạt",
                       textAlign: TextAlign.center,
-
                       style: GoogleFonts.openSans(
                         fontSize: 17,
                         color: Colors.grey[700],
                       ),
-
                     ),
                   ),
                   SizedBox(
@@ -94,9 +89,7 @@ class _WelcomePageState extends State<WelcomePage> {
                             EdgeInsets.symmetric(vertical: 15, horizontal: 80),
                         child: Text(
                           "Khám phá",
-
                           style: GoogleFonts.openSans(
-
                               color: Colors.white,
                               fontSize: 15,
                               fontWeight: FontWeight.bold),
