@@ -1,7 +1,4 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/controller/location_permission_handler.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class SuggestedPlacesScreen extends StatelessWidget {
   const SuggestedPlacesScreen({super.key});

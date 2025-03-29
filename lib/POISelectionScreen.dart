@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'dart:math'; // Required for distance calculations
-import 'dart:convert'; // Required for JSON parsing
-import 'dart:io'; // Required for file reading
+// Required for JSON parsing
+// Required for file reading
 
 class POISelectionScreen extends StatefulWidget {
   const POISelectionScreen({super.key});
