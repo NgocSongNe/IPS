@@ -5,6 +5,7 @@ import 'package:flutter_map_geojson/flutter_map_geojson.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'dart:math';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class POISelectionScreen {
   final MapController mapController = MapController();
@@ -18,94 +19,8 @@ class POISelectionScreen {
   List<List<LatLng>> walls = [];
   final GeoJsonParser geoJsonParser = GeoJsonParser();
 
-  final List<Map<String, dynamic>> wallList = [
-    // (Giữ nguyên danh sách wallList như trong file gốc của bạn)
-    {
-      "coordinates": [
-        LatLng(11.957244112442652, 108.444839594372198),
-        LatLng(11.957247003157194, 108.444855550437865),
-        LatLng(11.957303661155976, 108.444830729891251),
-        LatLng(11.957314645868653, 108.444865596849596),
-        LatLng(11.957250472014604, 108.444891599326994),
-        LatLng(11.957315802154174, 108.444865005884196),
-        LatLng(11.957344131147845, 108.444932375939302),
-        LatLng(11.957348756289385, 108.444947150074213),
-        LatLng(11.957369569425346, 108.444954241658948),
-        LatLng(11.957381132277966, 108.444930012077748),
-        LatLng(11.957370147567985, 108.444954832624362),
-        LatLng(11.957355694001548, 108.444993245375073),
-        LatLng(11.957307708155437, 108.445010383371581),
-        LatLng(11.957355115858878, 108.444993245375073),
-        LatLng(11.957371303853268, 108.444953059728178),
-        LatLng(11.957348178146693, 108.444946559108814),
-        LatLng(11.957315802154174, 108.444864414918783),
-        LatLng(11.957304239298763, 108.444830138925866),
-        LatLng(11.957245846871384, 108.444855550437865),
-        LatLng(11.957244112442652, 108.444840185337583),
-        LatLng(11.957163750566028, 108.444870324572747),
-        LatLng(11.95712385869035, 108.444889826430824),
-        LatLng(11.957064888080751, 108.444916419873621),
-        LatLng(11.957068356940493, 108.444931784973917),
-        LatLng(11.957070235906169, 108.444932375939302),
-        LatLng(11.95702759783569, 108.444950991349288),
-        LatLng(11.957040316989618, 108.444982312515265),
-        LatLng(11.957091049063548, 108.444960446795605),
-        LatLng(11.957101455641643, 108.444989404099999),
-        LatLng(11.957091627206786, 108.444961037761004),
-        LatLng(11.957042629562995, 108.444981721549865),
-        LatLng(11.957070958585271, 108.445049682570385),
-        LatLng(11.957055348716223, 108.44508395856333),
-        LatLng(11.957017769398147, 108.445069184428391),
-        LatLng(11.957002737669454, 108.445105824282933),
-        LatLng(11.957038582559569, 108.445124735175597),
-        LatLng(11.95709292802907, 108.445107006213718),
-        LatLng(11.957099865747795, 108.445134190621928),
-        LatLng(11.957378530636161, 108.445017179473581),
-        LatLng(11.957099865747795, 108.445134190621928)
-      ]
-    },
-    {
-      "coordinates": [
-        LatLng(11.957230381548149, 108.44489957735982),
-        LatLng(11.957239631835044, 108.444932671421952),
-        LatLng(11.957209568401481, 108.444946854591478),
-        LatLng(11.95720494325756, 108.444926761768002)
-      ]
-    },
-    {
-      "coordinates": [
-        LatLng(11.957144527307822, 108.444952764245443),
-        LatLng(11.95715001966745, 108.444971379655385),
-        LatLng(11.95712197972504, 108.444981721549823),
-        LatLng(11.95711128407614, 108.444952173280029)
-      ]
-    },
-    {
-      "coordinates": [
-        LatLng(11.957306985476951, 108.444946854591436),
-        LatLng(11.957317392046738, 108.444988222169158),
-        LatLng(11.957279234622233, 108.445004769200239),
-        LatLng(11.957282703479224, 108.445023680092888)
-      ]
-    },
-    {
-      "coordinates": [
-        LatLng(11.957100010283591, 108.445039045193184),
-        LatLng(11.957116198293249, 108.445079230840108),
-        LatLng(11.957141636592182, 108.445065047670582),
-        LatLng(11.957147418023427, 108.445078048909323)
-      ]
-    },
-    {
-      "coordinates": [
-        LatLng(11.957093072564868, 108.445107597179089),
-        LatLng(11.957132964445087, 108.44508986821721)
-      ]
-    }
-  ];
-
   POISelectionScreen() {
-    _loadWallsFromWallList();
+    _loadWallsFromAPI();
     _loadPOIData();
     loadGeoJson().then((_) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _focusOnPOIs());
@@ -113,84 +28,114 @@ class POISelectionScreen {
   }
 
   Future<void> loadGeoJson() async {
-    List<String> geoJsonFiles = [
-      "assets/geojson/Room.geojson",
-      "assets/geojson/Wall.geojson",
-      "assets/geojson/Hallways.geojson",
-      "assets/geojson/Doors.geojson",
-      "assets/geojson/POI.geojson",
+    List<String> geoJsonEndpoints = [
+      "/geojson/Room",
+      "/geojson/Wall",
+      "/geojson/Hallways",
+      "/geojson/Doors",
+      "/geojson/POI",
+      "/geojson/Paths",
     ];
 
-    for (String path in geoJsonFiles) {
+    for (String endpoint in geoJsonEndpoints) {
       try {
-        String geoJsonData = await rootBundle.loadString(path);
-        final geoJson = jsonDecode(geoJsonData);
-        if (geoJson['features'] is List) {
-          for (var feature in geoJson['features']) {
-            final properties = feature['properties'];
-            final geometry = feature['geometry'];
+        final response = await http.get(Uri.parse("http://localhost:5000$endpoint"));
+        if (response.statusCode == 200) {
+          final geoJson = jsonDecode(response.body);
+          if (geoJson['features'] is List) {
+            for (var feature in geoJson['features']) {
+              final properties = feature['properties'];
+              final geometry = feature['geometry'];
 
-            if (geometry['type'] == 'Point' && path == "assets/geojson/POI.geojson") {
-              final coordinates = geometry['coordinates'];
-              final lat = coordinates[1];
-              final lng = coordinates[0];
+              if (geometry['type'] == 'Point' && endpoint == "/geojson/POI") {
+                final coordinates = geometry['coordinates'];
+                final lat = coordinates[1];
+                final lng = coordinates[0];
 
-              geoJsonParser.markers.add(
-                Marker(
-                  point: LatLng(lat, lng),
-                  child: Column(
-                    children: [
-                      Text(
-                        properties['Name'],
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                          backgroundColor: Colors.white.withOpacity(0.7),
+                geoJsonParser.markers.add(
+                  Marker(
+                    point: LatLng(lat, lng),
+                    child: Column(
+                      children: [
+                        Text(
+                          properties['Name'],
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                            backgroundColor: Colors.white.withOpacity(0.7),
+                          ),
                         ),
-                      ),
-                      Icon(
-                        Icons.location_on,
-                        color: Colors.red,
-                        size: 20,
-                      ),
-                    ],
+                        Icon(
+                          Icons.location_on,
+                          color: Colors.red,
+                          size: 20,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            } else if (geometry['type'] == 'Polygon') {
-              final coordinates = geometry['coordinates'][0];
-              final points = coordinates.map<LatLng>((coord) {
-                return LatLng(coord[1], coord[0]);
-              }).toList();
+                );
+              } else if (geometry['type'] == 'Polygon') {
+                final coordinates = geometry['coordinates'][0];
+                final points = coordinates.map<LatLng>((coord) {
+                  return LatLng(coord[1], coord[0]);
+                }).toList();
 
-              Color fillColor;
-              if (path == "assets/geojson/Room.geojson") {
-                fillColor = Colors.blue.withOpacity(0.3);
-              } else if (path == "assets/geojson/Wall.geojson") {
-                fillColor = Colors.grey.withOpacity(0.3);
-              } else if (path == "assets/geojson/Hallways.geojson") {
-                fillColor = Colors.green.withOpacity(0.3);
-              } else {
-                fillColor = Colors.transparent;
+                Color fillColor;
+                if (endpoint == "/geojson/Room") {
+                  fillColor = Colors.blue.withOpacity(0.3);
+                } else if (endpoint == "/geojson/Wall") {
+                  fillColor = Colors.grey.withOpacity(0.3);
+                } else if (endpoint == "/geojson/Hallways") {
+                  fillColor = Colors.green.withOpacity(0.3);
+                } else {
+                  fillColor = Colors.transparent;
+                }
+
+                geoJsonParser.polygons.add(
+                  Polygon(
+                    points: points,
+                    color: fillColor,
+                    borderColor: fillColor.withOpacity(0.8),
+                    borderStrokeWidth: 2,
+                    label: properties['Name'],
+                  ),
+                );
               }
-
-              geoJsonParser.polygons.add(
-                Polygon(
-                  points: points,
-                  color: fillColor,
-                  borderColor: fillColor.withOpacity(0.8),
-                  borderStrokeWidth: 2,
-                  label: properties['Name'],
-                ),
-              );
             }
           }
+          print("Loaded GeoJSON from $endpoint");
+        } else {
+          print("Failed to load GeoJSON from $endpoint: ${response.statusCode}");
         }
-        print("Loaded GeoJSON: $path");
       } catch (e) {
-        print("Lỗi load GeoJSON từ $path: $e");
+        print("Error loading GeoJSON from $endpoint: $e");
       }
+    }
+  }
+
+  Future<void> _loadPOIData() async {
+    try {
+      final response = await http.get(Uri.parse("http://localhost:5000/geojson/POI"));
+      if (response.statusCode == 200) {
+        final poiJson = json.decode(response.body);
+
+        poiList = (poiJson['features'] as List).map((feature) {
+          final properties = feature['properties'];
+          final coordinates = feature['geometry']['coordinates'];
+          return {
+            "name": properties['Name'] ?? 'Unknown',
+            "rp": properties['RP'] ?? 'Unknown',
+            "coordinates": LatLng(coordinates[1], coordinates[0]),
+          };
+        }).toList();
+
+        graph = _generateGraph();
+      } else {
+        print("Failed to load POI data: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Error loading POI data: $e");
     }
   }
 
@@ -210,30 +155,22 @@ class POISelectionScreen {
     }
   }
 
-  void _loadWallsFromWallList() {
-    walls = wallList.map((wall) {
-      return wall['coordinates'] as List<LatLng>;
-    }).toList();
-  }
-
-  Future<void> _loadPOIData() async {
+  Future<void> _loadWallsFromAPI() async {
     try {
-      final poiData = await rootBundle.loadString('assets/geojson/POI.geojson');
-      final poiJson = json.decode(poiData);
-
-      poiList = (poiJson['features'] as List).map((feature) {
-        final properties = feature['properties'];
-        final coordinates = feature['geometry']['coordinates'];
-        return {
-          "name": properties['Name'] ?? 'Unknown',
-          "rp": properties['RP'] ?? 'Unknown',
-          "coordinates": LatLng(coordinates[1], coordinates[0]),
-        };
-      }).toList();
-
-      graph = _generateGraph();
+      final response = await http.get(Uri.parse("http://localhost:5000/geojson/Paths"));
+      if (response.statusCode == 200) {
+        final pathsJson = json.decode(response.body);
+        walls = (pathsJson['features'] as List).map<List<LatLng>>((feature) {
+          final coordinates = feature['geometry']['coordinates'];
+          return coordinates.map<LatLng>((coord) {
+            return LatLng(coord[1], coord[0]);
+          }).toList();
+        }).toList();
+      } else {
+        print("Failed to load walls data: ${response.statusCode}");
+      }
     } catch (e) {
-      print("Error loading POI data: $e");
+      print("Error loading walls data: $e");
     }
   }
 
@@ -397,47 +334,6 @@ class POISelectionScreen {
           PolygonLayer(polygons: geoJsonParser.polygons),
         if (geoJsonParser.polylines.isNotEmpty)
           PolylineLayer(polylines: geoJsonParser.polylines),
-        if (geoJsonParser.markers.isNotEmpty)
-          MarkerLayer(
-            markers: geoJsonParser.markers.map((marker) {
-              final showName = currentZoom >= 20;
-              return Marker(
-                width: 80.0,
-                height: 80.0,
-                point: marker.point,
-                child: Column(
-                  children: [
-                    if (showName)
-                      Text(
-                        (marker.child as Column).children[0] is Text
-                            ? ((marker.child as Column).children[0] as Text).data ?? "POI"
-                            : "POI",
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                          backgroundColor: Colors.white.withOpacity(0.7),
-                        ),
-                      ),
-                    Icon(
-                      Icons.location_on,
-                      color: Colors.red,
-                      size: 20,
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        PolylineLayer(
-          polylines: walls.map((wall) {
-            return Polyline(
-              points: wall,
-              color: Colors.black,
-              strokeWidth: 2.0,
-            );
-          }).toList(),
-        ),
         MarkerLayer(
           markers: poiList.map((poi) {
             return Marker(
@@ -459,7 +355,7 @@ class POISelectionScreen {
                         borderRadius: BorderRadius.circular(4.0),
                       ),
                       child: Text(
-                        "RP ${poi['rp']}",
+                        poi['name'] ?? "Unknown",
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
