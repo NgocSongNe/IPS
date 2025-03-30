@@ -9,12 +9,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:wifi_scan/wifi_scan.dart';
-<<<<<<< HEAD
 import 'dart:io';
 import 'package:flutter_application_1/ultils/wifi_scanner.dart';
-=======
-
->>>>>>> ebfe5472111b0239ba9139a4218db361c21c5b88
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -129,7 +125,7 @@ class _HomePageState extends State<HomePage> {
               ),
               SizedBox(height: 20),
               Expanded(
-                child: poiSelectionScreen.buildMapSection(() {
+                child: poiSelectionScreen.buildMapSection(context, () {
                   setState(() {});
                 }),
               ),
@@ -307,7 +303,7 @@ class _POISelectionScreenPageState extends State<POISelectionScreenPage> {
             Text("Điểm kết thúc: RP ${poiSelectionScreen.endPOI}",
                 style: TextStyle(fontSize: 16)),
           Expanded(
-            child: poiSelectionScreen.buildMapSection(() {
+            child: poiSelectionScreen.buildMapSection(context, () {
               setState(() {});
             }),
           ),

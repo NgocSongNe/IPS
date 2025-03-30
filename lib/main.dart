@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/Location.dart';
-import 'package:flutter_application_1/home.dart';
-import 'package:flutter_application_1/Location.dart';
 import 'package:flutter_application_1/welcome_screen.dart';
 import 'package:flutter_application_1/ultils/permission.dart';
 import 'package:permission_handler/permission_handler.dart';

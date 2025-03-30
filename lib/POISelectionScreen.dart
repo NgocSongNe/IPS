@@ -19,7 +19,6 @@ class POISelectionScreen {
   final GeoJsonParser geoJsonParser = GeoJsonParser();
 
   final List<Map<String, dynamic>> wallList = [
-    // (Giữ nguyên danh sách wallList như trong file gốc của bạn)
     {
       "coordinates": [
         LatLng(11.957244112442652, 108.444839594372198),
@@ -110,6 +109,83 @@ class POISelectionScreen {
     loadGeoJson().then((_) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _focusOnPOIs());
     });
+  }
+
+  List<String> directions = [];
+
+  void _calculateDirections() {
+    directions.clear();
+    if (selectedRoute.length < 2) return; // Cần ít nhất 2 điểm để có hướng dẫn
+
+    // Duyệt qua từng cặp điểm liên tiếp để xác định hướng
+    for (int i = 0; i < selectedRoute.length - 1; i++) {
+      if (i == 0 || selectedRoute.length < 3) {
+        // Nếu chỉ có 2 điểm, chỉ cần "Đi thẳng" đến đích
+        directions.add("Đi thẳng đến đích");
+      } else {
+        // Tính hướng dựa trên 3 điểm (trừ đoạn cuối)
+        String direction = _getDirection(selectedRoute[i - 1], selectedRoute[i], selectedRoute[i + 1]);
+        directions.add(direction);
+      }
+    }
+
+    // Đảm bảo hướng dẫn cuối cùng là "Đến đích"
+    if (directions.isNotEmpty && directions.last != "Đi thẳng đến đích") {
+      directions.add("Đi thẳng đến đích");
+    }
+  }
+
+  String _getDirection(LatLng p1, LatLng p2, LatLng p3) {
+    double v1x = p2.longitude - p1.longitude;
+    double v1y = p2.latitude - p1.latitude;
+    double v2x = p3.longitude - p2.longitude;
+    double v2y = p3.latitude - p2.latitude;
+
+    double crossProduct = v1x * v2y - v1y * v2x;
+    double dotProduct = v1x * v2x + v1y * v2y;
+    double mag1 = sqrt(v1x * v1x + v1y * v1y);
+    double mag2 = sqrt(v2x * v2x + v2y * v2y);
+    double angle = acos(dotProduct / (mag1 * mag2)) * 180 / pi;
+
+    if (angle < 10) {
+      return "Đi thẳng";
+    } else if (crossProduct > 0) {
+      return "Rẽ trái";
+    } else {
+      return "Rẽ phải";
+    }
+  }
+
+  void _showDirections(BuildContext context) {
+    if (directions.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Hướng dẫn đường đi'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: directions.asMap().entries.map((entry) {
+              int index = entry.key + 1;
+              String direction = entry.value;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                child: Text("$index. $direction"),
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> loadGeoJson() async {
@@ -233,7 +309,7 @@ class POISelectionScreen {
 
       graph = _generateGraph();
     } catch (e) {
-      print("Error loading walls data: $e");
+      print("Error loading POI data: $e");
     }
   }
 
@@ -356,26 +432,32 @@ class POISelectionScreen {
     return earthRadius * c * 1000;
   }
 
-  void _drawRoute() {
+  void _drawRoute(BuildContext context, VoidCallback setStateCallback) {
     if (startPOI != null && endPOI != null) {
       selectedRoute = _findShortestPath(startPOI!, endPOI!);
+      if (selectedRoute.isNotEmpty) {
+        _calculateDirections();
+        _showDirections(context); // Hiển thị tất cả hướng dẫn trong 1 pop-up
+      }
     }
   }
 
-  void _onPOITap(String rp) {
+  void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
     if (startPOI == null) {
       startPOI = rp;
     } else if (endPOI == null) {
       endPOI = rp;
-      _drawRoute();
+      _drawRoute(context, setStateCallback);
     } else {
       startPOI = rp;
       endPOI = null;
       selectedRoute = [];
+      directions.clear();
     }
+    setStateCallback();
   }
 
-  Widget buildMapSection(VoidCallback setStateCallback) {
+  Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
     return FlutterMap(
       mapController: mapController,
       options: MapOptions(
@@ -445,10 +527,7 @@ class POISelectionScreen {
               width: 80.0,
               height: 80.0,
               child: GestureDetector(
-                onTap: () {
-                  _onPOITap(poi['rp'] as String);
-                  setStateCallback();
-                },
+                onTap: () => _onPOITap(poi['rp'] as String, context, setStateCallback),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -459,7 +538,7 @@ class POISelectionScreen {
                         borderRadius: BorderRadius.circular(4.0),
                       ),
                       child: Text(
-                        "RP ${poi['rp']}",
+                        poi['name'] ?? "Unknown", // Display Name only
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,

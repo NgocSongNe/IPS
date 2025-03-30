@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 
 class WelcomePage extends StatefulWidget {
-  WelcomePage({super.key});
+  const WelcomePage({super.key});
   @override
   State<WelcomePage> createState() => _WelcomePageState();
 }
@@ -14,7 +14,7 @@ class _WelcomePageState extends State<WelcomePage> {
   @override
   Widget build(BuildContext context) {
     return Material(
-        child: Container(
+        child: SizedBox(
       width: MediaQuery.of(context).size.width,
       height: MediaQuery.of(context).size.height,
       child: Stack(
