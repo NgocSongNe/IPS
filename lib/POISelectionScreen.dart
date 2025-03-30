@@ -233,7 +233,7 @@ class POISelectionScreen {
 
       graph = _generateGraph();
     } catch (e) {
-      print("Error loading POI data: $e");
+      print("Error loading walls data: $e");
     }
   }
 
