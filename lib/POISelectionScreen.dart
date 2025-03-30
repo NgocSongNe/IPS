@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_geojson/flutter_map_geojson.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'dart:math'; // Required for distance calculations
-import 'dart:convert'; // Required for JSON parsing
+import 'dart:math';
+import 'dart:convert';
 
-class POISelectionScreen extends StatefulWidget {
-  @override
-  _POISelectionScreenState createState() => _POISelectionScreenState();
-}
-
-class _POISelectionScreenState extends State<POISelectionScreen> {
+class POISelectionScreen {
+  final MapController mapController = MapController();
+  double currentZoom = 18.0;
   String? startPOI;
   String? endPOI;
 
   List<Map<String, dynamic>> poiList = [];
   List<LatLng> selectedRoute = [];
   late Map<String, List<Map<String, dynamic>>> graph;
-  List<List<LatLng>> walls = []; // Danh sách các tường từ wallList
+  List<List<LatLng>> walls = [];
+  final GeoJsonParser geoJsonParser = GeoJsonParser();
 
   final List<Map<String, dynamic>> wallList = [
+    // (Giữ nguyên danh sách wallList như trong file gốc của bạn)
     {
       "coordinates": [
         LatLng(11.957244112442652, 108.444839594372198),
@@ -104,53 +104,139 @@ class _POISelectionScreenState extends State<POISelectionScreen> {
     }
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _loadWallsFromWallList(); // Đọc tường từ wallList
-    _loadPOIData(); // Load POI data from GeoJSON
+  POISelectionScreen() {
+    _loadWallsFromWallList();
+    _loadPOIData();
+    loadGeoJson().then((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _focusOnPOIs());
+    });
   }
 
-  /// Đọc dữ liệu từ wallList để lấy danh sách tường
-  void _loadWallsFromWallList() {
-    setState(() {
-      walls = wallList.map((wall) {
-        return wall['coordinates'] as List<LatLng>;
-      }).toList();
-    });
+  Future<void> loadGeoJson() async {
+    List<String> geoJsonFiles = [
+      "assets/geojson/Room.geojson",
+      "assets/geojson/Wall.geojson",
+      "assets/geojson/Hallways.geojson",
+      "assets/geojson/Doors.geojson",
+      "assets/geojson/POI.geojson",
+    ];
 
-    // Ghi danh sách tường vào console để kiểm tra
-    print("Extracted Walls from wallList:");
-    for (var wall in walls) {
-      print(wall.map((point) => "(${point.latitude}, ${point.longitude})").toList());
+    for (String path in geoJsonFiles) {
+      try {
+        String geoJsonData = await rootBundle.loadString(path);
+        final geoJson = jsonDecode(geoJsonData);
+        if (geoJson['features'] is List) {
+          for (var feature in geoJson['features']) {
+            final properties = feature['properties'];
+            final geometry = feature['geometry'];
+
+            if (geometry['type'] == 'Point' && path == "assets/geojson/POI.geojson") {
+              final coordinates = geometry['coordinates'];
+              final lat = coordinates[1];
+              final lng = coordinates[0];
+
+              geoJsonParser.markers.add(
+                Marker(
+                  point: LatLng(lat, lng),
+                  child: Column(
+                    children: [
+                      Text(
+                        properties['Name'],
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                          backgroundColor: Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+                      Icon(
+                        Icons.location_on,
+                        color: Colors.red,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            } else if (geometry['type'] == 'Polygon') {
+              final coordinates = geometry['coordinates'][0];
+              final points = coordinates.map<LatLng>((coord) {
+                return LatLng(coord[1], coord[0]);
+              }).toList();
+
+              Color fillColor;
+              if (path == "assets/geojson/Room.geojson") {
+                fillColor = Colors.blue.withOpacity(0.3);
+              } else if (path == "assets/geojson/Wall.geojson") {
+                fillColor = Colors.grey.withOpacity(0.3);
+              } else if (path == "assets/geojson/Hallways.geojson") {
+                fillColor = Colors.green.withOpacity(0.3);
+              } else {
+                fillColor = Colors.transparent;
+              }
+
+              geoJsonParser.polygons.add(
+                Polygon(
+                  points: points,
+                  color: fillColor,
+                  borderColor: fillColor.withOpacity(0.8),
+                  borderStrokeWidth: 2,
+                  label: properties['Name'],
+                ),
+              );
+            }
+          }
+        }
+        print("Loaded GeoJSON: $path");
+      } catch (e) {
+        print("Lỗi load GeoJSON từ $path: $e");
+      }
     }
   }
 
-  /// Load POI data from GeoJSON file
+  void _focusOnPOIs() {
+    if (geoJsonParser.markers.isNotEmpty) {
+      final latitudes = geoJsonParser.markers.map((m) => m.point.latitude).toList();
+      final longitudes = geoJsonParser.markers.map((m) => m.point.longitude).toList();
+
+      final bounds = LatLngBounds(
+        LatLng(latitudes.reduce((a, b) => a < b ? a : b),
+            longitudes.reduce((a, b) => a < b ? a : b)),
+        LatLng(latitudes.reduce((a, b) => a > b ? a : b),
+            longitudes.reduce((a, b) => a > b ? a : b)),
+      );
+
+      mapController.fitBounds(bounds, options: FitBoundsOptions(padding: EdgeInsets.all(50)));
+    }
+  }
+
+  void _loadWallsFromWallList() {
+    walls = wallList.map((wall) {
+      return wall['coordinates'] as List<LatLng>;
+    }).toList();
+  }
+
   Future<void> _loadPOIData() async {
     try {
       final poiData = await rootBundle.loadString('assets/geojson/POI.geojson');
       final poiJson = json.decode(poiData);
 
-      setState(() {
-        poiList = (poiJson['features'] as List).map((feature) {
-          final properties = feature['properties'];
-          final coordinates = feature['geometry']['coordinates'];
-          return {
-            "name": properties['Name'] ?? 'Unknown',
-            "rp": properties['RP'] ?? 'Unknown',
-            "coordinates": LatLng(coordinates[1], coordinates[0]),
-          };
-        }).toList();
-      });
+      poiList = (poiJson['features'] as List).map((feature) {
+        final properties = feature['properties'];
+        final coordinates = feature['geometry']['coordinates'];
+        return {
+          "name": properties['Name'] ?? 'Unknown',
+          "rp": properties['RP'] ?? 'Unknown',
+          "coordinates": LatLng(coordinates[1], coordinates[0]),
+        };
+      }).toList();
 
-      graph = _generateGraph(); // Generate graph after loading POI data
+      graph = _generateGraph();
     } catch (e) {
       print("Error loading POI data: $e");
     }
   }
 
-  /// Tạo đồ thị từ danh sách POI và kiểm tra tường
   Map<String, List<Map<String, dynamic>>> _generateGraph() {
     Map<String, List<Map<String, dynamic>>> generatedGraph = {};
 
@@ -164,7 +250,6 @@ class _POISelectionScreenState extends State<POISelectionScreen> {
         String otherRP = otherPoi["rp"];
         LatLng otherCoordinates = otherPoi["coordinates"];
 
-        // Kiểm tra xem đoạn đường có cắt qua tường không
         if (!_isPathBlocked(coordinates, otherCoordinates)) {
           double distance = _calculateDistance(coordinates, otherCoordinates);
           generatedGraph[poiRP]!.add({"rp": otherRP, "distance": distance});
@@ -174,7 +259,6 @@ class _POISelectionScreenState extends State<POISelectionScreen> {
     return generatedGraph;
   }
 
-  /// Kiểm tra xem đoạn đường có cắt qua bất kỳ tường nào không
   bool _isPathBlocked(LatLng start, LatLng end) {
     for (var wall in walls) {
       for (int i = 0; i < wall.length - 1; i++) {
@@ -186,13 +270,12 @@ class _POISelectionScreenState extends State<POISelectionScreen> {
     return false;
   }
 
-  /// Kiểm tra xem hai đoạn thẳng có cắt nhau không
   bool _doLinesIntersect(LatLng p1, LatLng q1, LatLng p2, LatLng q2) {
     int orientation(LatLng a, LatLng b, LatLng c) {
       double value = (b.latitude - a.latitude) * (c.longitude - b.longitude) -
           (b.longitude - a.longitude) * (c.latitude - b.latitude);
-      if (value == 0) return 0; // Thẳng hàng
-      return (value > 0) ? 1 : 2; // 1: Thuận chiều kim đồng hồ, 2: Ngược chiều
+      if (value == 0) return 0;
+      return (value > 0) ? 1 : 2;
     }
 
     bool onSegment(LatLng a, LatLng b, LatLng c) {
@@ -207,10 +290,8 @@ class _POISelectionScreenState extends State<POISelectionScreen> {
     int o3 = orientation(p2, q2, p1);
     int o4 = orientation(p2, q2, q1);
 
-    // Kiểm tra các trường hợp giao nhau
     if (o1 != o2 && o3 != o4) return true;
 
-    // Kiểm tra các trường hợp đặc biệt (thẳng hàng)
     if (o1 == 0 && onSegment(p1, p2, q1)) return true;
     if (o2 == 0 && onSegment(p1, q2, q1)) return true;
     if (o3 == 0 && onSegment(p2, p1, q2)) return true;
@@ -219,7 +300,6 @@ class _POISelectionScreenState extends State<POISelectionScreen> {
     return false;
   }
 
-  /// Thuật toán Dijkstra để tìm đường đi ngắn nhất
   List<LatLng> _findShortestPath(String start, String end) {
     if (!graph.containsKey(start) || !graph.containsKey(end)) {
       print("Start or end POI not found in the graph.");
@@ -230,7 +310,6 @@ class _POISelectionScreenState extends State<POISelectionScreen> {
     final Map<String, String?> previous = {};
     final List<String> unvisited = [];
 
-    // Khởi tạo khoảng cách và danh sách chưa thăm
     for (var node in graph.keys) {
       distances[node] = double.infinity;
       previous[node] = null;
@@ -239,7 +318,6 @@ class _POISelectionScreenState extends State<POISelectionScreen> {
     distances[start] = 0;
 
     while (unvisited.isNotEmpty) {
-      // Tìm nút có khoảng cách nhỏ nhất
       unvisited.sort((a, b) => distances[a]!.compareTo(distances[b]!));
       final current = unvisited.removeAt(0);
 
@@ -254,7 +332,6 @@ class _POISelectionScreenState extends State<POISelectionScreen> {
       }
     }
 
-    // Dựng lại đường đi
     final path = <String>[];
     var current = end;
     while (current.isNotEmpty) {
@@ -262,15 +339,13 @@ class _POISelectionScreenState extends State<POISelectionScreen> {
       current = previous[current] ?? '';
     }
 
-    // Chuyển đổi danh sách tên POI thành danh sách tọa độ
     return path.map((rp) {
       return poiList.firstWhere((poi) => poi['rp'] == rp)['coordinates'] as LatLng;
     }).toList();
   }
 
-  /// Hàm tính khoảng cách giữa hai điểm (Haversine Formula)
   double _calculateDistance(LatLng point1, LatLng point2) {
-    const earthRadius = 6371; // Bán kính Trái Đất (km)
+    const earthRadius = 6371;
     double dLat = (point2.latitude - point1.latitude) * (pi / 180);
     double dLon = (point2.longitude - point1.longitude) * (pi / 180);
     double a = sin(dLat / 2) * sin(dLat / 2) +
@@ -278,126 +353,146 @@ class _POISelectionScreenState extends State<POISelectionScreen> {
             cos(point2.latitude * (pi / 180)) *
             sin(dLon / 2) * sin(dLon / 2);
     double c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return earthRadius * c * 1000; // Trả về khoảng cách tính bằng mét
+    return earthRadius * c * 1000;
   }
 
-  /// Vẽ tuyến đường trên bản đồ
   void _drawRoute() {
     if (startPOI != null && endPOI != null) {
-      setState(() {
-        selectedRoute = _findShortestPath(startPOI!, endPOI!);
-      });
+      selectedRoute = _findShortestPath(startPOI!, endPOI!);
     }
   }
 
-  /// Xử lý khi người dùng nhấn vào một POI
   void _onPOITap(String rp) {
-    setState(() {
-      if (startPOI == null) {
-        startPOI = rp; // Chọn điểm bắt đầu
-      } else if (endPOI == null) {
-        endPOI = rp; // Chọn điểm kết thúc
-        _drawRoute(); // Vẽ đường sau khi chọn đủ 2 điểm
-      } else {
-        // Reset nếu đã chọn đủ 2 điểm
-        startPOI = rp;
-        endPOI = null;
-        selectedRoute = [];
-      }
-    });
+    if (startPOI == null) {
+      startPOI = rp;
+    } else if (endPOI == null) {
+      endPOI = rp;
+      _drawRoute();
+    } else {
+      startPOI = rp;
+      endPOI = null;
+      selectedRoute = [];
+    }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("Chọn Địa Điểm")),
-      body: Column(
-        children: [
-          if (startPOI != null)
-            Text("Điểm bắt đầu: RP $startPOI", style: TextStyle(fontSize: 16)),
-          if (endPOI != null)
-            Text("Điểm kết thúc: RP $endPOI", style: TextStyle(fontSize: 16)),
-          Expanded(
-            child: FlutterMap(
-              options: MapOptions(
-                center: LatLng(11.957103446948263, 108.4451276943349),
-                zoom: 18,
-              ),
-              children: [
-                TileLayer(
-                  urlTemplate:
-                      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                  subdomains: ['a', 'b', 'c'],
-                ),
-                // Hiển thị các tường từ wallList
-                PolylineLayer(
-                  polylines: walls.map((wall) {
-                    return Polyline(
-                      points: wall,
-                      color: Colors.black,
-                      strokeWidth: 2.0,
-                    );
-                  }).toList(),
-                ),
-                // Hiển thị các điểm POI bằng marker
-                MarkerLayer(
-                  markers: poiList.map((poi) {
-                    return Marker(
-                      point: poi['coordinates'] as LatLng,
-                      width: 80.0, // Tăng kích thước Marker
-                      height: 80.0,
-                      child: GestureDetector(
-                        onTap: () => _onPOITap(poi['rp'] as String),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 4.0, vertical: 2.0),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.7),
-                                borderRadius: BorderRadius.circular(4.0),
-                              ),
-                              child: Text(
-                                "RP ${poi['rp']}", // Hiển thị RP thay vì tên
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            ),
-                            Icon(
-                              Icons.location_on,
-                              color: (poi['rp'] == startPOI)
-                                  ? Colors.green // Điểm bắt đầu
-                                  : (poi['rp'] == endPOI)
-                                      ? Colors.blue // Điểm kết thúc
-                                      : Colors.red, // Các điểm khác
-                              size: 30, // Tăng kích thước biểu tượng
-                            ),
-                          ],
+  Widget buildMapSection(VoidCallback setStateCallback) {
+    return FlutterMap(
+      mapController: mapController,
+      options: MapOptions(
+        center: LatLng(11.957103446948263, 108.4451276943349),
+        zoom: currentZoom,
+        onPositionChanged: (position, hasGesture) {
+          if (position.zoom != null) {
+            currentZoom = position.zoom!;
+            setStateCallback();
+          }
+        },
+      ),
+      children: [
+        TileLayer(
+          urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          subdomains: ['a', 'b', 'c'],
+        ),
+        if (geoJsonParser.polygons.isNotEmpty)
+          PolygonLayer(polygons: geoJsonParser.polygons),
+        if (geoJsonParser.polylines.isNotEmpty)
+          PolylineLayer(polylines: geoJsonParser.polylines),
+        if (geoJsonParser.markers.isNotEmpty)
+          MarkerLayer(
+            markers: geoJsonParser.markers.map((marker) {
+              final showName = currentZoom >= 20;
+              return Marker(
+                width: 80.0,
+                height: 80.0,
+                point: marker.point,
+                child: Column(
+                  children: [
+                    if (showName)
+                      Text(
+                        (marker.child as Column).children[0] is Text
+                            ? ((marker.child as Column).children[0] as Text).data ?? "POI"
+                            : "POI",
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                          backgroundColor: Colors.white.withOpacity(0.7),
                         ),
                       ),
-                    );
-                  }).toList(),
+                    Icon(
+                      Icons.location_on,
+                      color: Colors.red,
+                      size: 20,
+                    ),
+                  ],
                 ),
-                // Hiển thị kết quả của thuật toán dẫn đường
-                if (selectedRoute.isNotEmpty)
-                  PolylineLayer(
-                    polylines: [
-                      Polyline(
-                        points: selectedRoute,
-                        color: Colors.red,
-                        strokeWidth: 4.0,
-                      ),
-                    ],
-                  ),
-              ],
-            ),
+              );
+            }).toList(),
           ),
-        ],
-      ),
+        PolylineLayer(
+          polylines: walls.map((wall) {
+            return Polyline(
+              points: wall,
+              color: Colors.black,
+              strokeWidth: 2.0,
+            );
+          }).toList(),
+        ),
+        MarkerLayer(
+          markers: poiList.map((poi) {
+            return Marker(
+              point: poi['coordinates'] as LatLng,
+              width: 80.0,
+              height: 80.0,
+              child: GestureDetector(
+                onTap: () {
+                  _onPOITap(poi['rp'] as String);
+                  setStateCallback();
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(4.0),
+                      ),
+                      child: Text(
+                        "RP ${poi['rp']}",
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.location_on,
+                      color: (poi['rp'] == startPOI)
+                          ? Colors.green
+                          : (poi['rp'] == endPOI)
+                              ? Colors.blue
+                              : Colors.red,
+                      size: 30,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        if (selectedRoute.isNotEmpty)
+          PolylineLayer(
+            polylines: [
+              Polyline(
+                points: selectedRoute,
+                color: Colors.red,
+                strokeWidth: 4.0,
+              ),
+            ],
+          ),
+      ],
     );
   }
 }
