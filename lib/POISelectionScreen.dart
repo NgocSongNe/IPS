@@ -5,10 +5,12 @@ import 'package:flutter_map_geojson/flutter_map_geojson.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'dart:math';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:google_fonts/google_fonts.dart'; // Thêm import cho GoogleFonts
 
 class POISelectionScreen {
   final MapController mapController = MapController();
-  double currentZoom = 18.0;
+  double currentZoom = 20.0;
   String? startPOI;
   String? endPOI;
 
@@ -103,169 +105,102 @@ class POISelectionScreen {
     }
   ];
 
+  LatLng userPositionCoordinates = LatLng(11.957103446948263, 108.4451276943349);
+  String? selectedMarkerRP;
+  String? secondSelectedMarkerRP;
+
+  List<String> directions = [];
+
   POISelectionScreen() {
-    _loadWallsFromWallList();
+    _loadWallsFromAPI();
     _loadPOIData();
     loadGeoJson().then((_) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _focusOnPOIs());
     });
   }
 
-  List<String> directions = [];
-
-  void _calculateDirections() {
-    directions.clear();
-    if (selectedRoute.length < 2) return; // Cần ít nhất 2 điểm để có hướng dẫn
-
-    // Duyệt qua từng cặp điểm liên tiếp để xác định hướng
-    for (int i = 0; i < selectedRoute.length - 1; i++) {
-      if (i == 0 || selectedRoute.length < 3) {
-        // Nếu chỉ có 2 điểm, chỉ cần "Đi thẳng" đến đích
-        directions.add("Đi thẳng đến đích");
-      } else {
-        // Tính hướng dựa trên 3 điểm (trừ đoạn cuối)
-        String direction = _getDirection(selectedRoute[i - 1], selectedRoute[i], selectedRoute[i + 1]);
-        directions.add(direction);
-      }
-    }
-
-    // Đảm bảo hướng dẫn cuối cùng là "Đến đích"
-    if (directions.isNotEmpty && directions.last != "Đi thẳng đến đích") {
-      directions.add("Đi thẳng đến đích");
-    }
-  }
-
-  String _getDirection(LatLng p1, LatLng p2, LatLng p3) {
-    double v1x = p2.longitude - p1.longitude;
-    double v1y = p2.latitude - p1.latitude;
-    double v2x = p3.longitude - p2.longitude;
-    double v2y = p3.latitude - p2.latitude;
-
-    double crossProduct = v1x * v2y - v1y * v2x;
-    double dotProduct = v1x * v2x + v1y * v2y;
-    double mag1 = sqrt(v1x * v1x + v1y * v1y);
-    double mag2 = sqrt(v2x * v2x + v2y * v2y);
-    double angle = acos(dotProduct / (mag1 * mag2)) * 180 / pi;
-
-    if (angle < 10) {
-      return "Đi thẳng";
-    } else if (crossProduct > 0) {
-      return "Rẽ trái";
-    } else {
-      return "Rẽ phải";
-    }
-  }
-
-  void _showDirections(BuildContext context) {
-    if (directions.isEmpty) return;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Hướng dẫn đường đi'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: directions.asMap().entries.map((entry) {
-              int index = entry.key + 1;
-              String direction = entry.value;
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                child: Text("$index. $direction"),
-              );
-            }).toList(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> loadGeoJson() async {
-    List<String> geoJsonFiles = [
-      "assets/geojson/Room.geojson",
-      "assets/geojson/Wall.geojson",
-      "assets/geojson/Hallways.geojson",
-      "assets/geojson/Doors.geojson",
-      "assets/geojson/POI.geojson",
+    List<String> geoJsonEndpoints = [
+      "/geojson/Room",
+      "/geojson/Wall",
+      "/geojson/Hallways",
+      "/geojson/Doors",
+      "/geojson/POI",
     ];
 
-    for (String path in geoJsonFiles) {
+    for (String endpoint in geoJsonEndpoints) {
       try {
-        String geoJsonData = await rootBundle.loadString(path);
-        final geoJson = jsonDecode(geoJsonData);
-        if (geoJson['features'] is List) {
-          for (var feature in geoJson['features']) {
-            final properties = feature['properties'];
-            final geometry = feature['geometry'];
+        final response = await http.get(Uri.parse("http://10.0.2.2:5000$endpoint"));
+        if (response.statusCode == 200) {
+          final geoJson = jsonDecode(response.body);
+          if (geoJson['features'] is List) {
+            for (var feature in geoJson['features']) {
+              final properties = feature['properties'];
+              final geometry = feature['geometry'];
 
-            if (geometry['type'] == 'Point' && path == "assets/geojson/POI.geojson") {
-              final coordinates = geometry['coordinates'];
-              final lat = coordinates[1];
-              final lng = coordinates[0];
+              if (geometry['type'] == 'Point' && endpoint == "/geojson/POI") {
+                final coordinates = geometry['coordinates'];
+                final lat = coordinates[1];
+                final lng = coordinates[0];
 
-              geoJsonParser.markers.add(
-                Marker(
-                  point: LatLng(lat, lng),
-                  child: Column(
-                    children: [
-                      Text(
-                        properties['Name'],
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                          backgroundColor: Colors.white.withOpacity(0.7),
+                geoJsonParser.markers.add(
+                  Marker(
+                    point: LatLng(lat, lng),
+                    child: Column(
+                      children: [
+                        Text(
+                          properties['Name'],
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                            backgroundColor: Colors.white.withOpacity(0.7),
+                          ),
                         ),
-                      ),
-                      Icon(
-                        Icons.location_on,
-                        color: Colors.red,
-                        size: 20,
-                      ),
-                    ],
+                        Icon(
+                          Icons.location_on,
+                          color: Colors.red,
+                          size: 20,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            } else if (geometry['type'] == 'Polygon') {
-              final coordinates = geometry['coordinates'][0];
-              final points = coordinates.map<LatLng>((coord) {
-                return LatLng(coord[1], coord[0]);
-              }).toList();
+                );
+              } else if (geometry['type'] == 'Polygon') {
+                final coordinates = geometry['coordinates'][0];
+                final points = coordinates.map<LatLng>((coord) {
+                  return LatLng(coord[1], coord[0]);
+                }).toList();
 
-              Color fillColor;
-              if (path == "assets/geojson/Room.geojson") {
-                fillColor = Colors.blue.withOpacity(0.3);
-              } else if (path == "assets/geojson/Wall.geojson") {
-                fillColor = Colors.grey.withOpacity(0.3);
-              } else if (path == "assets/geojson/Hallways.geojson") {
-                fillColor = Colors.green.withOpacity(0.3);
-              } else {
-                fillColor = Colors.transparent;
+                Color fillColor;
+                if (endpoint == "/geojson/Room") {
+                  fillColor = Colors.blue.withOpacity(0.3);
+                } else if (endpoint == "/geojson/Wall") {
+                  fillColor = Colors.grey.withOpacity(0.3);
+                } else if (endpoint == "/geojson/Hallways") {
+                  fillColor = Colors.green.withOpacity(0.3);
+                } else {
+                  fillColor = Colors.transparent;
+                }
+
+                geoJsonParser.polygons.add(
+                  Polygon(
+                    points: points,
+                    color: fillColor,
+                    borderColor: fillColor.withOpacity(0.8),
+                    borderStrokeWidth: 2,
+                    label: properties['Name'],
+                  ),
+                );
               }
-
-              geoJsonParser.polygons.add(
-                Polygon(
-                  points: points,
-                  color: fillColor,
-                  borderColor: fillColor.withOpacity(0.8),
-                  borderStrokeWidth: 2,
-                  label: properties['Name'],
-                ),
-              );
             }
           }
+          print("Loaded GeoJSON from $endpoint");
+        } else {
+          print("Failed to load GeoJSON from $endpoint: ${response.statusCode}");
         }
-        print("Loaded GeoJSON: $path");
       } catch (e) {
-        print("Lỗi load GeoJSON từ $path: $e");
+        print("Error loading GeoJSON from $endpoint: $e");
       }
     }
   }
@@ -276,38 +211,57 @@ class POISelectionScreen {
       final longitudes = geoJsonParser.markers.map((m) => m.point.longitude).toList();
 
       final bounds = LatLngBounds(
-        LatLng(latitudes.reduce((a, b) => a < b ? a : b),
-            longitudes.reduce((a, b) => a < b ? a : b)),
-        LatLng(latitudes.reduce((a, b) => a > b ? a : b),
-            longitudes.reduce((a, b) => a > b ? a : b)),
+        LatLng(latitudes.reduce((a, b) => a < b ? a : b), longitudes.reduce((a, b) => a < b ? a : b)),
+        LatLng(latitudes.reduce((a, b) => a > b ? a : b), longitudes.reduce((a, b) => a > b ? a : b)),
       );
 
       mapController.fitBounds(bounds, options: FitBoundsOptions(padding: EdgeInsets.all(50)));
     }
   }
 
-  void _loadWallsFromWallList() {
-    walls = wallList.map((wall) {
-      return wall['coordinates'] as List<LatLng>;
-    }).toList();
+  Future<void> _loadWallsFromAPI() async {
+    try {
+      final response = await http.get(Uri.parse("http://10.0.2.2:5000/geojson/Paths"));
+      if (response.statusCode == 200) {
+        final pathsJson = json.decode(response.body);
+        walls = (pathsJson['features'] as List).map<List<LatLng>>((feature) {
+          final coordinates = feature['geometry']['coordinates'];
+          return coordinates.map<LatLng>((coord) {
+            return LatLng(coord[1], coord[0]);
+          }).toList();
+        }).toList();
+      } else {
+        print("Failed to load walls data: ${response.statusCode}");
+        walls = wallList.map((wall) => wall['coordinates'] as List<LatLng>).toList(); // Fallback to local data
+      }
+    } catch (e) {
+      print("Error loading walls data: $e");
+      walls = wallList.map((wall) => wall['coordinates'] as List<LatLng>).toList(); // Fallback to local data
+    }
   }
 
   Future<void> _loadPOIData() async {
     try {
-      final poiData = await rootBundle.loadString('assets/geojson/POI.geojson');
-      final poiJson = json.decode(poiData);
+      final response = await http.get(Uri.parse("http://10.0.2.2:5000/geojson/POI"));
+      if (response.statusCode == 200) {
+        final poiJson = json.decode(response.body);
 
-      poiList = (poiJson['features'] as List).map((feature) {
-        final properties = feature['properties'];
-        final coordinates = feature['geometry']['coordinates'];
-        return {
-          "name": properties['Name'] ?? 'Unknown',
-          "rp": properties['RP'] ?? 'Unknown',
-          "coordinates": LatLng(coordinates[1], coordinates[0]),
-        };
-      }).toList();
+        poiList = (poiJson['features'] as List).map((feature) {
+          final properties = feature['properties'];
+          final coordinates = feature['geometry']['coordinates'];
+          return {
+            "name": properties['Name'] ?? 'Unknown',
+            "rp": properties['RP'] ?? 'Unknown',
+            "coordinates": LatLng(coordinates[1], coordinates[0]),
+            "description": properties['Description'] ?? 'Không có mô tả', // Giả lập nếu API có trường này
+            "images": properties['Images'] != null ? List<String>.from(properties['Images']) : <String>[] // Giả lập nếu API có trường này
+          };
+        }).toList();
 
-      graph = _generateGraph();
+        graph = _generateGraph();
+      } else {
+        print("Failed to load POI data: ${response.statusCode}");
+      }
     } catch (e) {
       print("Error loading POI data: $e");
     }
@@ -377,6 +331,32 @@ class POISelectionScreen {
   }
 
   List<LatLng> _findShortestPath(String start, String end) {
+    if (start == "userPosition") {
+      double minDistance = double.infinity;
+      String? closestPOI;
+      LatLng? closestCoordinates;
+
+      for (var poi in poiList) {
+        double distance = _calculateDistance(userPositionCoordinates, poi['coordinates']);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestPOI = poi['rp'];
+          closestCoordinates = poi['coordinates'];
+        }
+      }
+
+      if (closestPOI != null && closestCoordinates != null) {
+        return [userPositionCoordinates, ..._findShortestPathFromGraph(closestPOI, end)];
+      } else {
+        print("No valid POI found near userPositionCoordinates.");
+        return [];
+      }
+    }
+
+    return _findShortestPathFromGraph(start, end);
+  }
+
+  List<LatLng> _findShortestPathFromGraph(String start, String end) {
     if (!graph.containsKey(start) || !graph.containsKey(end)) {
       print("Start or end POI not found in the graph.");
       return [];
@@ -425,11 +405,203 @@ class POISelectionScreen {
     double dLat = (point2.latitude - point1.latitude) * (pi / 180);
     double dLon = (point2.longitude - point1.longitude) * (pi / 180);
     double a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(point1.latitude * (pi / 180)) *
-            cos(point2.latitude * (pi / 180)) *
-            sin(dLon / 2) * sin(dLon / 2);
+        cos(point1.latitude * (pi / 180)) * cos(point2.latitude * (pi / 180)) * sin(dLon / 2) * sin(dLon / 2);
     double c = 2 * atan2(sqrt(a), sqrt(1 - a));
     return earthRadius * c * 1000;
+  }
+
+  void _calculateDirections() {
+    directions.clear();
+    if (selectedRoute.length < 2) return;
+
+    for (int i = 0; i < selectedRoute.length - 1; i++) {
+      if (i == 0 || selectedRoute.length < 3) {
+        directions.add("Đi thẳng đến đích");
+      } else {
+        String direction = _getDirection(selectedRoute[i - 1], selectedRoute[i], selectedRoute[i + 1]);
+        directions.add(direction);
+      }
+    }
+
+    if (directions.isNotEmpty && directions.last != "Đi thẳng đến đích") {
+      directions.add("Đi thẳng đến đích");
+    }
+  }
+
+  String _getDirection(LatLng p1, LatLng p2, LatLng p3) {
+    double v1x = p2.longitude - p1.longitude;
+    double v1y = p2.latitude - p1.latitude;
+    double v2x = p3.longitude - p2.longitude;
+    double v2y = p3.latitude - p2.latitude;
+
+    double crossProduct = v1x * v2y - v1y * v2x;
+    double dotProduct = v1x * v2x + v1y * v2y;
+    double mag1 = sqrt(v1x * v1x + v1y * v1y);
+    double mag2 = sqrt(v2x * v2x + v2y * v2y);
+    double angle = acos(dotProduct / (mag1 * mag2)) * 180 / pi;
+
+    if (angle < 10) {
+      return "Đi thẳng";
+    } else if (crossProduct > 0) {
+      return "Rẽ phải";
+    } else {
+      return "Rẽ trái";
+    }
+  }
+
+  void _showDirections(BuildContext context) {
+    if (directions.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Hướng dẫn đường đi'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: directions.asMap().entries.map((entry) {
+              int index = entry.key + 1;
+              String direction = entry.value;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                child: Text("$index. $direction"),
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPOIDetailsDialog({
+    required BuildContext context,
+    required String name,
+    required String description,
+    required List<String> images,
+    required VoidCallback setStateCallback,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.5,
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    name,
+                    style: GoogleFonts.openSans(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              SizedBox(height: 10),
+              Text(
+                description,
+                style: GoogleFonts.openSans(fontSize: 14),
+              ),
+              SizedBox(height: 10),
+              Row(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      if (startPOI != null && endPOI != null) {
+                        _drawRoute(context, setStateCallback);
+                      }
+                    },
+                    icon: Icon(Icons.directions, color: Colors.white),
+                    label: Text(
+                      "Đường đi",
+                      style: GoogleFonts.openSans(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      startPOI = "userPosition";
+                      endPOI = selectedMarkerRP;
+                      _drawRoute(context, setStateCallback);
+                    },
+                    icon: Icon(Icons.navigation, color: Colors.white),
+                    label: Text(
+                      "Bắt đầu",
+                      style: GoogleFonts.openSans(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 10),
+              Expanded(
+                child: images.isNotEmpty
+                    ? ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: images.length,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 10),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.network(
+                                images[index],
+                                width: 150,
+                                height: 100,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 150,
+                                    height: 100,
+                                    color: Colors.grey,
+                                    child: Center(
+                                      child: Icon(Icons.error, color: Colors.white),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                    : Center(child: Text("Không có hình ảnh")),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _drawRoute(BuildContext context, VoidCallback setStateCallback) {
@@ -437,24 +609,37 @@ class POISelectionScreen {
       selectedRoute = _findShortestPath(startPOI!, endPOI!);
       if (selectedRoute.isNotEmpty) {
         _calculateDirections();
-        _showDirections(context); // Hiển thị tất cả hướng dẫn trong 1 pop-up
+        _showDirections(context);
+        setStateCallback();
       }
     }
   }
 
+  void _onMarkerTap(String rp, BuildContext context, VoidCallback setStateCallback) {
+    selectedMarkerRP = rp;
+    var poi = poiList.firstWhere((poi) => poi['rp'] == rp);
+    _showPOIDetailsDialog(
+      context: context,
+      name: poi['name'],
+      description: poi['description'] ?? 'Không có mô tả',
+      images: poi['images'] ?? <String>[],
+      setStateCallback: setStateCallback,
+    );
+    setStateCallback();
+  }
+
   void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
     if (startPOI == null) {
-      startPOI = rp;
-    } else if (endPOI == null) {
+      startPOI = "userPosition";
       endPOI = rp;
       _drawRoute(context, setStateCallback);
     } else {
-      startPOI = rp;
+      startPOI = null;
       endPOI = null;
       selectedRoute = [];
       directions.clear();
+      setStateCallback();
     }
-    setStateCallback();
   }
 
   Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
@@ -463,6 +648,9 @@ class POISelectionScreen {
       options: MapOptions(
         center: LatLng(11.957103446948263, 108.4451276943349),
         zoom: currentZoom,
+        minZoom: 5.0,
+        maxZoom: 22.0,
+        interactiveFlags: InteractiveFlag.all,
         onPositionChanged: (position, hasGesture) {
           if (position.zoom != null) {
             currentZoom = position.zoom!;
@@ -475,91 +663,80 @@ class POISelectionScreen {
           urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
           subdomains: ['a', 'b', 'c'],
         ),
-        if (geoJsonParser.polygons.isNotEmpty)
-          PolygonLayer(polygons: geoJsonParser.polygons),
-        if (geoJsonParser.polylines.isNotEmpty)
-          PolylineLayer(polylines: geoJsonParser.polylines),
-        if (geoJsonParser.markers.isNotEmpty)
-          MarkerLayer(
-            markers: geoJsonParser.markers.map((marker) {
-              final showName = currentZoom >= 20;
+        if (geoJsonParser.polygons.isNotEmpty) PolygonLayer(polygons: geoJsonParser.polygons),
+        if (geoJsonParser.polylines.isNotEmpty) PolylineLayer(polylines: geoJsonParser.polylines),
+        MarkerLayer(
+          rotate: true,
+          markers: [
+            ...poiList.map((poi) {
+              final isSelected = poi['rp'] == selectedMarkerRP || poi['rp'] == secondSelectedMarkerRP;
               return Marker(
+                point: poi['coordinates'] as LatLng,
                 width: 80.0,
                 height: 80.0,
-                point: marker.point,
-                child: Column(
-                  children: [
-                    if (showName)
-                      Text(
-                        (marker.child as Column).children[0] is Text
-                            ? ((marker.child as Column).children[0] as Text).data ?? "POI"
-                            : "POI",
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                          backgroundColor: Colors.white.withOpacity(0.7),
+                child: GestureDetector(
+                  onTap: () {
+                    _onMarkerTap(poi['rp'] as String, context, setStateCallback);
+                  },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                        decoration: BoxDecoration(
+                          color: isSelected ? Colors.green.withOpacity(0.7) : Colors.white.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(4.0),
+                        ),
+                        child: Text(
+                          poi['name'] ?? "Unknown",
+                          style: TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
                         ),
                       ),
-                    Icon(
-                      Icons.location_on,
-                      color: Colors.red,
-                      size: 20,
-                    ),
-                  ],
+                      Icon(
+                        Icons.location_on,
+                        color: isSelected ? Colors.green : Colors.red,
+                        size: 30,
+                      ),
+                    ],
+                  ),
                 ),
               );
             }).toList(),
-          ),
-        PolylineLayer(
-          polylines: walls.map((wall) {
-            return Polyline(
-              points: wall,
-              color: Colors.black,
-              strokeWidth: 2.0,
-            );
-          }).toList(),
-        ),
-        MarkerLayer(
-          markers: poiList.map((poi) {
-            return Marker(
-              point: poi['coordinates'] as LatLng,
+            Marker(
+              point: userPositionCoordinates,
               width: 80.0,
               height: 80.0,
-              child: GestureDetector(
-                onTap: () => _onPOITap(poi['rp'] as String, context, setStateCallback),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(4.0),
-                      ),
-                      child: Text(
-                        "RP ${poi['rp']}",
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(4.0),
+                    ),
+                    child: Text(
+                      "User Position",
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
                       ),
                     ),
-                    Icon(
-                      Icons.location_on,
-                      color: (poi['rp'] == startPOI)
-                          ? Colors.green
-                          : (poi['rp'] == endPOI)
-                              ? Colors.blue
-                              : Colors.red,
-                      size: 30,
-                    ),
-                  ],
-                ),
+                  ),
+                  Icon(
+                    Icons.my_location,
+                    color: Colors.blue,
+                    size: 30,
+                  ),
+                ],
               ),
-            );
-          }).toList(),
+            ),
+          ],
         ),
         if (selectedRoute.isNotEmpty)
           PolylineLayer(

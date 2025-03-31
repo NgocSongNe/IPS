@@ -27,7 +27,6 @@ class _InformationPageState extends State<InformationPage> {
   void _showAddPostDialog() {
     final TextEditingController captionController = TextEditingController();
     File? postImage;
-
     showDialog(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -100,8 +99,7 @@ class _InformationPageState extends State<InformationPage> {
                   );
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text('Vui lòng nhập caption hoặc chọn ảnh!')),
+                    SnackBar(content: Text('Vui lòng nhập caption hoặc chọn ảnh!')),
                   );
                 }
               },
