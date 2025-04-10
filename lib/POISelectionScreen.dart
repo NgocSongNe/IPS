@@ -16,7 +16,7 @@ class POISelectionScreen {
   List<Map<String, dynamic>> poiList = [];
   List<LatLng> selectedRoute = [];
   late Map<String, List<Map<String, dynamic>>> graph;
-  List<List<LatLng>> walls = []; // Walls will now be loaded from the API
+  List<List<LatLng>> walls = [];
   final GeoJsonParser geoJsonParser = GeoJsonParser();
 
   POISelectionScreen() {
@@ -326,34 +326,6 @@ class POISelectionScreen {
   }
 
   List<LatLng> _findShortestPath(String start, String end) {
-    if (start == "userPosition") {
-      // Find the closest POI to userPositionCoordinates
-      double minDistance = double.infinity;
-      String? closestPOI;
-      LatLng? closestCoordinates;
-
-      for (var poi in poiList) {
-        double distance = _calculateDistance(userPositionCoordinates, poi['coordinates']);
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestPOI = poi['rp'];
-          closestCoordinates = poi['coordinates'];
-        }
-      }
-
-      if (closestPOI != null && closestCoordinates != null) {
-        // Add userPositionCoordinates as the starting point
-        return [userPositionCoordinates, ..._findShortestPathFromGraph(closestPOI, end)];
-      } else {
-        print("No valid POI found near userPositionCoordinates.");
-        return [];
-      }
-    }
-
-    return _findShortestPathFromGraph(start, end);
-  }
-
-  List<LatLng> _findShortestPathFromGraph(String start, String end) {
     if (!graph.containsKey(start) || !graph.containsKey(end)) {
       print("Start or end POI not found in the graph.");
       return [];
@@ -411,228 +383,141 @@ class POISelectionScreen {
     return earthRadius * c * 1000;
   }
 
-  void _drawRoute(BuildContext context, VoidCallback setStateCallback) {
+  void _drawRoute() {
     if (startPOI != null && endPOI != null) {
       selectedRoute = _findShortestPath(startPOI!, endPOI!);
-      if (selectedRoute.isNotEmpty) {
-        _calculateDirections();
-        _showDirections(context); // Hiển thị tất cả hướng dẫn trong 1 pop-up
-      }
     }
   }
 
-  void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
+  void _onPOITap(String rp) {
     if (startPOI == null) {
-      // If no start point is selected, use the user's position as the start point
-      startPOI = "userPosition"; // Use a special identifier for the user's position
+      startPOI = rp;
+    } else if (endPOI == null) {
       endPOI = rp;
+      _drawRoute();
     } else {
-      // If a start point is already selected, set the selected POI as the end point
-      startPOI = endPOI; // Move the previous end point to the start point
-      endPOI = rp;       // Set the new POI as the end point
-    }
-    _drawRoute(context, setStateCallback); // Calculate and draw the route
-    setStateCallback();
-  }
-
-  void _showPOIPopup(BuildContext context, String poiName, String poiRP, VoidCallback setStateCallback) {
-    showModalBottomSheet(
-      context: context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (BuildContext context) {
-        return Container(
-          padding: EdgeInsets.all(16),
-          height: MediaQuery.of(context).size.height * 0.4, // Half-screen popup
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Thông tin POI",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 10),
-              Text("Tên: $poiName", style: TextStyle(fontSize: 16)),
-              Text("RP: $poiRP", style: TextStyle(fontSize: 16)),
-              Spacer(),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop(); // Close the popup
-                  _onPOITap(poiRP, context, setStateCallback); // Handle route logic
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: Text("Tìm đường", style: TextStyle(color: Colors.white)),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _onMarkerTap(String rp, BuildContext context, VoidCallback setStateCallback) {
-    if (selectedMarkerRP == rp) {
-      // If the marker is already selected, deselect it
-      selectedMarkerRP = null;
-      secondSelectedMarkerRP = null;
-    } else if (selectedMarkerRP == null) {
-      // If no marker is selected, select this marker
-      selectedMarkerRP = rp;
-    } else if (secondSelectedMarkerRP == null) {
-      // If one marker is already selected, select this as the second marker
-      secondSelectedMarkerRP = rp;
-    } else {
-      // If two markers are already selected, reset and select this marker
-      selectedMarkerRP = rp;
-      secondSelectedMarkerRP = null;
-    }
-    _drawRouteBasedOnSelection(context, setStateCallback);
-    setStateCallback();
-  }
-
-  void _drawRouteBasedOnSelection(BuildContext context, VoidCallback setStateCallback) {
-    if (selectedMarkerRP != null && secondSelectedMarkerRP == null) {
-      // Case: Only one marker is selected
-      startPOI = "userPosition"; // Start from the user's position
-      endPOI = selectedMarkerRP; // End at the selected marker
-    } else if (selectedMarkerRP != null && secondSelectedMarkerRP != null) {
-      // Case: Two markers are selected
-      startPOI = selectedMarkerRP; // Start at the first selected marker
-      endPOI = secondSelectedMarkerRP; // End at the second selected marker
-    } else {
-      // Case: No markers are selected
-      startPOI = null;
+      startPOI = rp;
       endPOI = null;
       selectedRoute = [];
     }
-
-    // Draw the route if start and end points are defined
-    if (startPOI != null && endPOI != null) {
-      _drawRoute(context, setStateCallback);
-    } else {
-      // Clear the route if no valid start and end points
-      selectedRoute = [];
-      setStateCallback();
-    }
   }
-
-  Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
-    return FlutterMap(
-      mapController: mapController,
-      options: MapOptions(
-        center: LatLng(11.957103446948263, 108.4451276943349),
-        zoom: currentZoom,
-        minZoom: 5.0, // Minimum zoom level
-        maxZoom: 22.0, // Maximum zoom level
-        interactiveFlags: InteractiveFlag.all,
-        onPositionChanged: (position, hasGesture) {
-          if (position.zoom != null) {
-            currentZoom = position.zoom!;
-            setStateCallback();
-          }
-        },
+Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
+  return FlutterMap(
+    mapController: mapController,
+    options: MapOptions(
+      center: LatLng(11.957103446948263, 108.4451276943349),
+      zoom: currentZoom,
+      minZoom: 5.0,
+      maxZoom: 22.0,
+      interactiveFlags: InteractiveFlag.all,
+      onPositionChanged: (position, hasGesture) {
+        if (position.zoom != null) {
+          currentZoom = position.zoom!;
+          setStateCallback();
+        }
+      },
+    ),
+    children: [
+      TileLayer(
+        urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        subdomains: ['a', 'b', 'c'],
       ),
-      children: [
-        TileLayer(
-          urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-          subdomains: ['a', 'b', 'c'],
-        ),
-        if (geoJsonParser.polygons.isNotEmpty)
-          PolygonLayer(polygons: geoJsonParser.polygons),
-        if (geoJsonParser.polylines.isNotEmpty)
-          PolylineLayer(polylines: geoJsonParser.polylines),
-        MarkerLayer(
-          rotate: true, // Enable rotation for markers
-          markers: [
-            // POI markers
-            ...poiList.map((poi) {
-              final isSelected = poi['rp'] == selectedMarkerRP || poi['rp'] == secondSelectedMarkerRP;
-              return Marker(
-                point: poi['coordinates'] as LatLng,
-                width: 80.0,
-                height: 80.0,
-                child: GestureDetector(
-                  onTap: () {
-                    _onMarkerTap(poi['rp'] as String, context, setStateCallback);
-                  },
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-                        decoration: BoxDecoration(
-                          color: isSelected ? Colors.green.withOpacity(0.7) : Colors.white.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(4.0),
-                        ),
-                        child: Text(
-                          poi['name'] ?? "Unknown", // Display Name
-                          style: TextStyle(
-                            fontSize: 8,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ),
-                      Icon(
-                        Icons.location_on,
-                        color: isSelected ? Colors.green : Colors.red, // Highlight selected markers
-                        size: 30,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-            // User position marker (added last to ensure it appears on top)
-            Marker(
-              point: userPositionCoordinates,
+      if (geoJsonParser.polygons.isNotEmpty)
+        PolygonLayer(polygons: geoJsonParser.polygons),
+      if (geoJsonParser.polylines.isNotEmpty)
+        PolylineLayer(polylines: geoJsonParser.polylines),
+
+      // MARKERS LAYER (POIs + User)
+      MarkerLayer(
+        rotate: true,
+        markers: [
+          // POI markers
+          ...poiList.map((poi) {
+            final isSelected = poi['rp'] == selectedMarkerRP || poi['rp'] == secondSelectedMarkerRP;
+            return Marker(
+              point: poi['coordinates'] as LatLng,
               width: 80.0,
               height: 80.0,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(4.0),
-                    ),
-                    child: Text(
-                      "Vị trí của bạn", // Label for user position
-                      style: TextStyle(
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
+              child: GestureDetector(
+                onTap: () {
+                  _onPOITap(poi['rp'] as String);
+                  setStateCallback();
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                      decoration: BoxDecoration(
+                        color: isSelected ? Colors.green.withOpacity(0.7) : Colors.white.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(4.0),
+                      ),
+                      child: Text(
+                        poi['name'] ?? "Unknown",
+                        style: TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
                       ),
                     ),
-                  ),
-                  Icon(
-                    Icons.person_pin_circle,
-                    color: Colors.blue, // User position marker color
-                    size: 30,
-                  ),
-                ],
+                    Icon(
+                      Icons.location_on,
+                      color: isSelected ? Colors.green : Colors.red,
+                      size: 30,
+                    ),
+                  ],
+                ),
               ),
+            );
+          }),
+
+          // USER POSITION marker
+          Marker(
+            point: userPositionCoordinates,
+            width: 80.0,
+            height: 80.0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4.0),
+                  ),
+                  child: Text(
+                    "User",
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.person_pin_circle,
+                  color: Colors.blue,
+                  size: 30,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+
+      // PATH / ROUTE LINE
+      if (selectedRoute.isNotEmpty)
+        PolylineLayer(
+          polylines: [
+            Polyline(
+              points: selectedRoute,
+              color: Colors.red,
+              strokeWidth: 4.0,
             ),
           ],
         ),
-        if (selectedRoute.isNotEmpty)
-          PolylineLayer(
-            polylines: [
-              Polyline(
-                points: selectedRoute,
-                color: Colors.red,
-                strokeWidth: 4.0,
-              ),
-            ],
-          ),
-      ],
-    );
-  }
+    ],
+  );
+}
 }
