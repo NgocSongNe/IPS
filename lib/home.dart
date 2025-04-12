@@ -5,6 +5,7 @@ import 'package:flutter_application_1/information.dart';
 import 'package:flutter_application_1/models/category_model.dart';
 import 'package:flutter_application_1/models/map_model.dart';
 import 'package:flutter_application_1/POISelectionScreen.dart';
+import 'package:flutter_application_1/tutorial_overlay.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:photo_view/photo_view.dart';
@@ -26,6 +27,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   TextEditingController searchPlaceController = TextEditingController();
   int currentPageIndex = 0;
+  bool showLabel = true;
   List<CategoryModel> categories = [];
   List<MapModel> maps = [];
   bool _isDialogDismissed = false;
@@ -144,7 +146,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> sendWiFiDataToServer() async {
     final url =
-        Uri.parse('http://192.168.1.6:8765/predict'); // URL server Node.js
+        Uri.parse('http://192.168.2.241:8765/predict'); // URL server Node.js
 
     try {
 //     List<String> macAddresses = [
