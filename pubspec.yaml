@@ -85,7 +85,7 @@ flutter:
     - assets/geojson/Paths.geojson
     - assets/geojson/Stair.geojson
     - assets/model/wifi_mlp_model.tflite
-
+    
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
