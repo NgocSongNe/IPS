@@ -34,16 +34,70 @@ class _HomePageState extends State<HomePage> {
   PhotoViewComputedScale _photoViewScale = PhotoViewComputedScale.covered * 1;
   File? profileImage;
   late POISelectionScreen poiSelectionScreen;
-
+  LatLng userPositionCoordinates = LatLng(11.95722012378790, 108.44507513707570); // Tọa độ mặc định cho người dùng
+  String? selectedMarkerRP;
+      Timer? wifiScanTimer;
   @override
   void initState() {
     super.initState();
-    poiSelectionScreen = POISelectionScreen();
+    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: userPositionCoordinates);
     getCategories();
     getMaps();
+    scanAndSendWiFiData(); 
+
     WidgetsBinding.instance.addPostFrameCallback((_) => _showGuideDialog());
   }
+  Future<void> scanAndSendWiFiData() async {
+    try {
+      // Quét mạng Wi-Fi
+      List<WiFiAccessPoint> wifiList = await WifiScanner.scanWiFi();
+      
+      // Lấy các giá trị RSSI từ danh sách Wi-Fi
+      List<int> wifiData = wifiList.map((wifi) => wifi.level).toList();
 
+      // Gửi dữ liệu Wi-Fi lên server
+      final url = Uri.parse('http://192.168.1.6:8765/predict'); // URL server
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'rssi': wifiData}),
+      );
+
+      if (response.statusCode == 200) {
+        print("✅ Dữ liệu đã được gửi thành công: ${response.body}");
+
+        // Xử lý dữ liệu trả về từ server
+        final responseData = jsonDecode(response.body);
+
+        // Lấy thông tin từ dữ liệu trả về
+        String name = responseData['name'];
+        List coordinates = responseData['coordinates'];
+        int rp = responseData['rp'];
+
+        // Cập nhật vị trí người dùng từ dự đoán của model
+        setState(() {
+          userPositionCoordinates = LatLng(coordinates[1], coordinates[0]); // Tọa độ từ dữ liệu trả về
+          // Cập nhật lại marker người dùng với tọa độ mới
+          selectedMarkerRP = rp.toString();
+            print("Updated User Position: $userPositionCoordinates"); 
+        });
+print("User Position: $userPositionCoordinates");
+        // Di chuyển bản đồ đến vị trí người dùng
+        poiSelectionScreen.mapController.move(userPositionCoordinates, 18);
+      } else {
+        print("❌ Gửi dữ liệu thất bại: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("❌ Lỗi khi quét và gửi dữ liệu Wi-Fi: $e");
+    }
+  }
+  Future<void> startWifiTracking() async {
+  // Bắt đầu quét Wi-Fi mỗi 5 giây (hoặc thời gian bạn muốn)
+  wifiScanTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
+    // Quét Wi-Fi và gửi dữ liệu
+    await scanAndSendWiFiData();
+  });
+}
   void getCategories() {
     categories = CategoryModel.getCategories();
   }
@@ -101,61 +155,12 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-// Future<List<int>> getOrderedRSSI(List<String> macList) async {
-//   List<WiFiAccessPoint> wifiList = await WifiScanner.scanWiFi();
-
-//   // Tạo map để tra cứu nhanh RSSI theo MAC
-//   Map<String, int> wifiMap = {
-//     for (var ap in wifiList) ap.bssid.toUpperCase(): ap.level
-//   };
-
-//   // Duyệt qua danh sách MAC cố định, lấy RSSI hoặc -100 nếu không tìm thấy
-//   List<int> orderedRSSI = macList.map((mac) {
-//     return wifiMap[mac.toUpperCase()] ?? -100;
-//   }).toList();
-
-//   return orderedRSSI;
-// }
-// Future<void> sendWiFiDataToServer(List<int> rssiData) async {
-//   final url = Uri.parse('http://192.168.1.13:8765/predict');
-
-//   try {
-//     final response = await http.post(
-//       url,
-//       headers: {'Content-Type': 'application/json'},
-//       body: jsonEncode({'rssi': rssiData}),
-//     );
-
-//     if (response.statusCode == 200) {
-//       final result = jsonDecode(response.body);
-//       String name = result['name'];
-//       List coordinates = result['coordinates'];
-//       int rp = result['rp'];
-
-//       print("📍 Vị trí dự đoán: $name - RP $rp - Tọa độ $coordinates");
-
-//       // 👉 Cập nhật vị trí trên bản đồ tại đây, ví dụ:
-//       updateUserPosition(coordinates); // Tùy bạn xử lý hiển thị
-//     } else {
-//       print("❌ Lỗi server: ${response.body}");
-//     }
-//   } catch (e) {
-//     print("❌ Gửi dữ liệu thất bại: $e");
-//   }
-// }
 
   Future<void> sendWiFiDataToServer() async {
     final url =
-        Uri.parse('http://192.168.2.241:8765/predict'); // URL server Node.js
+        Uri.parse('http://192.168.1.6:8765/predict'); // URL server Node.js
 
     try {
-//     List<String> macAddresses = [
-//   "A0:23:B4:11:22:33",
-//   "B0:12:FF:44:55:66",
-//   "C0:DE:AD:BE:EF:00",
-//   // ...
-// ];
-
       // Dữ liệu mẫu WiFi (dùng List thay vì Set)
       final List<int> wifiData = [
         -67,
@@ -240,8 +245,26 @@ class _HomePageState extends State<HomePage> {
         body: jsonEncode({'rssi': wifiData}),
       );
 
-      if (response.statusCode == 200) {
-        print("✅ Data sent successfully: ${response.body}");
+     if (response.statusCode == 200) {
+        print("✅ Dữ liệu đã được gửi thành công: ${response.body}");
+
+        // Xử lý dữ liệu trả về từ server
+        final responseData = jsonDecode(response.body);
+
+        // Lấy thông tin từ dữ liệu trả về
+        String name = responseData['name'];
+        List coordinates = responseData['coordinates'];
+        int rp = responseData['rp'];
+
+        // Cập nhật vị trí người dùng từ dự đoán của model
+        setState(() {
+          userPositionCoordinates = LatLng(coordinates[1], coordinates[0]); // Tọa độ từ dữ liệu trả về
+          // Cập nhật lại marker người dùng với tọa độ mới
+          selectedMarkerRP = rp.toString();
+        });
+
+        // Di chuyển bản đồ đến vị trí người dùng
+        poiSelectionScreen.mapController.move(userPositionCoordinates, 30);
       } else {
         print("❌ Failed to send data: ${response.statusCode}");
       }
@@ -313,12 +336,8 @@ class _HomePageState extends State<HomePage> {
                   heroTag: "wifi_scan_button",
                   onPressed: () async {
                     List<WiFiAccessPoint> wifiList =
-                        await WifiScanner.scanWiFi();
-                    // for (var wifi in wifiList) {
-                    //   print("📡 SSID: ${wifi.bssid}, RSSI: ${wifi.level} dBm");
-                    // }
-
-                    // Send WiFi data to the server
+                    await WifiScanner.scanWiFi();
+                    
                     await sendWiFiDataToServer();
 
                     String? imagePath;
@@ -329,6 +348,16 @@ class _HomePageState extends State<HomePage> {
                   backgroundColor: Colors.blue,
                   child: Icon(Icons.wifi, color: Colors.white),
                 ),
+                // Button để bắt đầu quét Wi-Fi
+FloatingActionButton(
+  heroTag: "wifi_tracking_button",
+  onPressed: () {
+    startWifiTracking();
+  },
+  backgroundColor: Colors.blue,
+  child: Icon(Icons.wifi, color: Colors.white),
+),
+
               ],
             ),
           ),
@@ -354,7 +383,7 @@ class _HomePageState extends State<HomePage> {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => POISelectionScreenPage()),
+            MaterialPageRoute(builder: (context) => POISelectionScreenPage(userPositionCoordinates: userPositionCoordinates)),
           );
         },
         child: AbsorbPointer(
@@ -441,19 +470,21 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// Tạo một StatefulWidget để hiển thị màn hình chọn POI riêng biệt
 class POISelectionScreenPage extends StatefulWidget {
+  final LatLng userPositionCoordinates;  // Accept the user position coordinates
+
+  POISelectionScreenPage({required this.userPositionCoordinates});  // Constructor
+
   @override
   _POISelectionScreenPageState createState() => _POISelectionScreenPageState();
 }
-
 class _POISelectionScreenPageState extends State<POISelectionScreenPage> {
   late POISelectionScreen poiSelectionScreen;
 
   @override
   void initState() {
     super.initState();
-    poiSelectionScreen = POISelectionScreen();
+    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: widget.userPositionCoordinates);
   }
 
   @override
@@ -470,7 +501,7 @@ class _POISelectionScreenPageState extends State<POISelectionScreenPage> {
                 style: TextStyle(fontSize: 16)),
           Expanded(
             child: poiSelectionScreen.buildMapSection(context, () {
-              setState(() {});
+              setState(() {});  // Notify parent to update the state
             }),
           ),
         ],

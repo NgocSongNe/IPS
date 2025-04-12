@@ -12,14 +12,14 @@ class POISelectionScreen {
   double currentZoom = 20.0;
   String? startPOI;
   String? endPOI;
-
+  LatLng userPositionCoordinates;
   List<Map<String, dynamic>> poiList = [];
   List<LatLng> selectedRoute = [];
   late Map<String, List<Map<String, dynamic>>> graph;
   List<List<LatLng>> walls = [];
   final GeoJsonParser geoJsonParser = GeoJsonParser();
 
-  POISelectionScreen() {
+  POISelectionScreen({required this.userPositionCoordinates}) {
     _loadWallsFromAPI(); // Load walls from the Paths API
     _loadPOIData();
     loadGeoJson().then((_) {
@@ -27,9 +27,6 @@ class POISelectionScreen {
     });
   }
   List<String> directions = [];
-  String userPositionRP = "userPosition"; // User's current position RP
-  LatLng userPositionCoordinates = LatLng(11.95722012378790, 108.44507513707570); // Coordinates for RP13
-
   String? selectedMarkerRP; // Track the currently selected marker
   String? secondSelectedMarkerRP; // Track the second selected marker
 
@@ -50,7 +47,7 @@ class POISelectionScreen {
       }
     }
 
-    // Đảm bảo hướng dẫn cuối cùng là "Đến đích"
+    // Đảm bảo hướng dẫn cuối cùng là "Đến đích"192.168.1.6
     if (directions.isNotEmpty && directions.last != "Đi thẳng đến đích") {
       directions.add("Đi thẳng đến đích");
     }
@@ -121,7 +118,7 @@ class POISelectionScreen {
     for (String endpoint in geoJsonEndpoints) {
       try {
         final response =
-            await http.get(Uri.parse("http://192.168.2.241:8765$endpoint"));
+            await http.get(Uri.parse("http://192.168.1.6:8765$endpoint"));
         if (response.statusCode == 200) {
           final geoJson = jsonDecode(response.body);
           if (geoJson['features'] is List) {
@@ -219,7 +216,7 @@ class POISelectionScreen {
   Future<void> _loadWallsFromAPI() async {
     try {
       final response =
-          await http.get(Uri.parse("http://192.168.2.241:8765/geojson/Paths"));
+          await http.get(Uri.parse("http://192.168.1.6:8765/geojson/Paths"));
       if (response.statusCode == 200) {
         final pathsJson = json.decode(response.body);
         walls = (pathsJson['features'] as List).map<List<LatLng>>((feature) {
@@ -239,7 +236,7 @@ class POISelectionScreen {
   Future<void> _loadPOIData() async {
     try {
       final response =
-          await http.get(Uri.parse("http://192.168.2.241:8765/geojson/POI"));
+          await http.get(Uri.parse("http://192.168.1.6:8765/geojson/POI"));
       if (response.statusCode == 200) {
         final poiJson = json.decode(response.body);
 
@@ -405,7 +402,7 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
   return FlutterMap(
     mapController: mapController,
     options: MapOptions(
-      center: LatLng(11.957103446948263, 108.4451276943349),
+      center: userPositionCoordinates,  // Updated coordinates
       zoom: currentZoom,
       minZoom: 5.0,
       maxZoom: 22.0,
@@ -413,7 +410,12 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
       onPositionChanged: (position, hasGesture) {
         if (position.zoom != null) {
           currentZoom = position.zoom!;
-          setStateCallback();
+          setStateCallback();  // Rebuild the widget to update the zoom
+        }
+        if (position.center != null) {
+          // Update the center position of the map if it changes
+          userPositionCoordinates = position.center!;  // Update user position
+          setStateCallback();  // Notify parent to update the state
         }
       },
     ),
@@ -441,7 +443,7 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
               child: GestureDetector(
                 onTap: () {
                   _onPOITap(poi['rp'] as String);
-                  setStateCallback();
+                  setStateCallback();  // Update state when POI is tapped
                 },
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -474,7 +476,7 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
 
           // USER POSITION marker
           Marker(
-            point: userPositionCoordinates,
+            point: userPositionCoordinates,  // Updated user coordinates
             width: 80.0,
             height: 80.0,
             child: Column(
@@ -487,7 +489,7 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
                     borderRadius: BorderRadius.circular(4.0),
                   ),
                   child: Text(
-                    "User",
+                    "User",  // Display "User"
                     style: TextStyle(
                       fontSize: 8,
                       fontWeight: FontWeight.bold,
@@ -497,7 +499,7 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
                 ),
                 Icon(
                   Icons.person_pin_circle,
-                  color: Colors.blue,
+                  color: Colors.blue,  // Icon color for the user
                   size: 30,
                 ),
               ],
@@ -506,7 +508,7 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
         ],
       ),
 
-      // PATH / ROUTE LINE
+      // PATH / ROUTE LINE (if a route is selected)
       if (selectedRoute.isNotEmpty)
         PolylineLayer(
           polylines: [
@@ -520,4 +522,6 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
     ],
   );
 }
+
+
 }
