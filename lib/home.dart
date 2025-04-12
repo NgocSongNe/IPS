@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/Location.dart';
 import 'package:flutter_application_1/account.dart';
 import 'package:flutter_application_1/information.dart';
 import 'package:flutter_application_1/models/category_model.dart';
@@ -16,7 +17,7 @@ import 'dart:async';
 import 'package:flutter/services.dart' show rootBundle;
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({Key? key}) : super(key: key);
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -28,7 +29,7 @@ class _HomePageState extends State<HomePage> {
   List<CategoryModel> categories = [];
   List<MapModel> maps = [];
   bool _isDialogDismissed = false;
-  final PhotoViewComputedScale _photoViewScale = PhotoViewComputedScale.covered * 1;
+  PhotoViewComputedScale _photoViewScale = PhotoViewComputedScale.covered * 1;
   File? profileImage;
   late POISelectionScreen poiSelectionScreen;
 
@@ -143,7 +144,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> sendWiFiDataToServer() async {
     final url =
-        Uri.parse('http://192.168.1.6:8765/predict'); // URL server Node.js
+        Uri.parse('http://192.168.2.35:8765/predict'); // URL server Node.js
 
     try {
 //     List<String> macAddresses = [
@@ -276,18 +277,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               SizedBox(height: 20),
-              if (poiSelectionScreen.startPOI != null)
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text("Điểm bắt đầu: RP ${poiSelectionScreen.startPOI}",
-                      style: TextStyle(fontSize: 16)),
-                ),
-              if (poiSelectionScreen.endPOI != null)
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text("Điểm kết thúc: RP ${poiSelectionScreen.endPOI}",
-                      style: TextStyle(fontSize: 16)),
-                ),
               Expanded(
                 child: poiSelectionScreen.buildMapSection(context, () {
                   setState(() {});
@@ -323,10 +312,6 @@ class _HomePageState extends State<HomePage> {
                   onPressed: () async {
                     List<WiFiAccessPoint> wifiList =
                         await WifiScanner.scanWiFi();
-<<<<<<< HEAD
-                    for (var wifi in wifiList) {
-                      print("📡 SSID: ${wifi.ssid}, RSSI: ${wifi.level} dBm");
-=======
                     // for (var wifi in wifiList) {
                     //   print("📡 SSID: ${wifi.bssid}, RSSI: ${wifi.level} dBm");
                     // }
@@ -337,7 +322,6 @@ class _HomePageState extends State<HomePage> {
                     String? imagePath;
                     if (imagePath != null) {
                       profileImage = File(imagePath);
->>>>>>> 69f9a3dfdfba3e942211dca6015d8e6d36ce7932
                     }
                   },
                   backgroundColor: Colors.blue,
@@ -364,24 +348,35 @@ class _HomePageState extends State<HomePage> {
           )
         ],
       ),
-      child: TextFormField(
-        controller: searchPlaceController,
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          hintText: '   Tìm kiếm địa điểm ...',
-          hintStyle: GoogleFonts.openSans(color: Colors.grey[00], fontSize: 18),
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: Icon(Icons.mic, color: Colors.black),
-                onPressed: () {},
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => POISelectionScreenPage()),
+          );
+        },
+        child: AbsorbPointer(
+          child: TextFormField(
+            controller: searchPlaceController,
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              hintText: '   Tìm kiếm địa điểm ...',
+              hintStyle:
+                  GoogleFonts.openSans(color: Colors.grey[00], fontSize: 18),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.mic, color: Colors.black),
+                    onPressed: () {},
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.search, color: Colors.black),
+                    onPressed: () {},
+                  ),
+                ],
               ),
-              IconButton(
-                icon: Icon(Icons.search, color: Colors.black),
-                onPressed: () {},
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -444,11 +439,6 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-<<<<<<< HEAD
-void main() {
-  runApp(MaterialApp(home: HomePage()));
-}
-=======
 // Tạo một StatefulWidget để hiển thị màn hình chọn POI riêng biệt
 class POISelectionScreenPage extends StatefulWidget {
   @override
@@ -486,4 +476,3 @@ class _POISelectionScreenPageState extends State<POISelectionScreenPage> {
     );
   }
 }
->>>>>>> 69f9a3dfdfba3e942211dca6015d8e6d36ce7932
