@@ -12,47 +12,57 @@ class POISelectionScreen {
   double currentZoom = 20.0;
   String? startPOI;
   String? endPOI;
+  double? pathDistance;
 
   List<Map<String, dynamic>> poiList = [];
   List<LatLng> selectedRoute = [];
   late Map<String, List<Map<String, dynamic>>> graph;
   List<List<LatLng>> walls = [];
+  List<List<LatLng>> hallways = [];
+  List<LatLng> waypoints = [];
   final GeoJsonParser geoJsonParser = GeoJsonParser();
 
+  List<String> directions = [];
+  List<double> segmentDistances = [];
+  String userPositionRP = "userPosition";
+  LatLng userPositionCoordinates =
+      LatLng(11.95722012378790, 108.44507513707570);
+
+  String? selectedMarkerRP;
+  String? secondSelectedMarkerRP;
+
   POISelectionScreen() {
-    _loadWallsFromAPI(); // Load walls from the Paths API
+    _loadWallsFromAPI();
     _loadPOIData();
     loadGeoJson().then((_) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _focusOnPOIs());
     });
   }
-  List<String> directions = [];
-  String userPositionRP = "userPosition"; // User's current position RP
-  LatLng userPositionCoordinates = LatLng(11.95722012378790, 108.44507513707570); // Coordinates for RP13
-
-  String? selectedMarkerRP; // Track the currently selected marker
-  String? secondSelectedMarkerRP; // Track the second selected marker
 
   void _calculateDirections() {
     directions.clear();
-    if (selectedRoute.length < 2) return; // Cần ít nhất 2 điểm để có hướng dẫn
+    segmentDistances.clear();
+    if (selectedRoute.length < 2) return;
 
-    // Duyệt qua từng cặp điểm liên tiếp để xác định hướng
     for (int i = 0; i < selectedRoute.length - 1; i++) {
+      double segmentDistance = _calculateDistance(selectedRoute[i], selectedRoute[i + 1]);
+      segmentDistances.add(segmentDistance);
+
       if (i == 0 || selectedRoute.length < 3) {
-        // Nếu chỉ có 2 điểm, chỉ cần "Đi thẳng" đến đích
         directions.add("Đi thẳng đến đích");
       } else {
-        // Tính hướng dựa trên 3 điểm (trừ đoạn cuối)
         String direction = _getDirection(
             selectedRoute[i - 1], selectedRoute[i], selectedRoute[i + 1]);
         directions.add(direction);
       }
     }
 
-    // Đảm bảo hướng dẫn cuối cùng là "Đến đích"192.168.2.35
     if (directions.isNotEmpty && directions.last != "Đi thẳng đến đích") {
       directions.add("Đi thẳng đến đích");
+      if (selectedRoute.length > 1) {
+        segmentDistances.add(_calculateDistance(
+            selectedRoute[selectedRoute.length - 2], selectedRoute.last));
+      }
     }
   }
 
@@ -78,23 +88,36 @@ class POISelectionScreen {
   }
 
   void _showDirections(BuildContext context) {
-    if (directions.isEmpty) return;
+    if (directions.isEmpty && pathDistance == null) return;
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Hướng dẫn đường đi'),
+        title: const Text('Hướng dẫn đường đi'),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: directions.asMap().entries.map((entry) {
-              int index = entry.key + 1;
-              String direction = entry.value;
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                child: Text("$index. $direction"),
-              );
-            }).toList(),
+            children: [
+              if (pathDistance != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text(
+                    "Tổng khoảng cách: ${pathDistance!.toStringAsFixed(2)} mét",
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ...directions.asMap().entries.map((entry) {
+                int index = entry.key + 1;
+                String direction = entry.value;
+                String distanceText = entry.key < segmentDistances.length
+                    ? " (${segmentDistances[entry.key].toStringAsFixed(2)} mét)"
+                    : "";
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: Text("$index. $direction$distanceText"),
+                );
+              }).toList(),
+            ],
           ),
         ),
         actions: [
@@ -102,7 +125,7 @@ class POISelectionScreen {
             onPressed: () {
               Navigator.of(context).pop();
             },
-            child: Text('OK'),
+            child: const Text('OK'),
           ),
         ],
       ),
@@ -168,8 +191,11 @@ class POISelectionScreen {
                   fillColor = Colors.blue.withOpacity(0.3);
                 } else if (endpoint == "/geojson/Wall") {
                   fillColor = Colors.grey.withOpacity(0.3);
+                  walls.add(points);
                 } else if (endpoint == "/geojson/Hallways") {
                   fillColor = Colors.green.withOpacity(0.3);
+                  hallways.add(points);
+                  waypoints.addAll(points);
                 } else {
                   fillColor = Colors.transparent;
                 }
@@ -250,8 +276,30 @@ class POISelectionScreen {
             "name": properties['Name'] ?? 'Unknown',
             "rp": properties['RP'] ?? 'Unknown',
             "coordinates": LatLng(coordinates[1], coordinates[0]),
+            "description": properties['Description'] ?? 'Không có mô tả',
+            "images": properties['Images'] != null
+                ? List<String>.from(properties['Images'])
+                : <String>[],
           };
         }).toList();
+
+        poiList.add({
+          "name": "User Position",
+          "rp": userPositionRP,
+          "coordinates": userPositionCoordinates,
+          "description": "Vị trí hiện tại của bạn",
+          "images": <String>[],
+        });
+
+        for (int i = 0; i < waypoints.length; i++) {
+          poiList.add({
+            "name": "Waypoint $i",
+            "rp": "wp_$i",
+            "coordinates": waypoints[i],
+            "description": "Điểm trung gian",
+            "images": <String>[],
+          });
+        }
 
         graph = _generateGraph();
       } else {
@@ -275,7 +323,8 @@ class POISelectionScreen {
         String otherRP = otherPoi["rp"];
         LatLng otherCoordinates = otherPoi["coordinates"];
 
-        if (!_isPathBlocked(coordinates, otherCoordinates)) {
+        if (_isPathInHallway(coordinates, otherCoordinates) &&
+            !_isPathBlocked(coordinates, otherCoordinates)) {
           double distance = _calculateDistance(coordinates, otherCoordinates);
           generatedGraph[poiRP]!.add({"rp": otherRP, "distance": distance});
         }
@@ -293,6 +342,36 @@ class POISelectionScreen {
       }
     }
     return false;
+  }
+
+  bool _isPathInHallway(LatLng start, LatLng end) {
+    if (hallways.isEmpty) return true;
+
+    for (var hallway in hallways) {
+      if (_isPointInPolygon(start, hallway) && _isPointInPolygon(end, hallway)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _isPointInPolygon(LatLng point, List<LatLng> polygon) {
+    int j = polygon.length - 1;
+    bool inside = false;
+
+    for (int i = 0; i < polygon.length; i++) {
+      if (((polygon[i].latitude > point.latitude) !=
+              (polygon[j].latitude > point.latitude)) &&
+          (point.longitude <
+              (polygon[j].longitude - polygon[i].longitude) *
+                      (point.latitude - polygon[i].latitude) /
+                      (polygon[j].latitude - polygon[i].latitude) +
+                  polygon[i].longitude)) {
+        inside = !inside;
+      }
+      j = i;
+    }
+    return inside;
   }
 
   bool _doLinesIntersect(LatLng p1, LatLng q1, LatLng p2, LatLng q2) {
@@ -359,9 +438,15 @@ class POISelectionScreen {
 
     final path = <String>[];
     var current = end;
-    while (current.isNotEmpty) {
+    while (current.isNotEmpty && previous[current] != null) {
       path.insert(0, current);
-      current = previous[current] ?? '';
+      current = previous[current]!;
+    }
+    if (path.isNotEmpty && distances[end] != double.infinity) {
+      path.insert(0, start);
+    } else {
+      print("No path found from $start to $end");
+      return [];
     }
 
     return path.map((rp) {
@@ -383,141 +468,353 @@ class POISelectionScreen {
     return earthRadius * c * 1000;
   }
 
-  void _drawRoute() {
+  double _calculatePathDistance(List<LatLng> route) {
+    if (route.length < 2) return 0.0;
+    double totalDistance = 0.0;
+    for (var i = 0; i < route.length - 1; i++) {
+      totalDistance += _calculateDistance(route[i], route[i + 1]);
+    }
+    return totalDistance;
+  }
+
+  void _drawRoute(BuildContext context, VoidCallback setStateCallback) {
     if (startPOI != null && endPOI != null) {
       selectedRoute = _findShortestPath(startPOI!, endPOI!);
+      if (selectedRoute.isNotEmpty) {
+        pathDistance = _calculatePathDistance(selectedRoute);
+        _calculateDirections();
+        _showDirections(context);
+        setStateCallback();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Không tìm thấy đường đi giữa hai điểm")),
+        );
+      }
     }
   }
 
-  void _onPOITap(String rp) {
+  void _onPOITap(
+      String rp, BuildContext context, VoidCallback setStateCallback) {
+    var poi = poiList.firstWhere(
+      (poi) => poi['rp'] == rp,
+      orElse: () => {
+        "name": "Không tìm thấy",
+        "description": "Không tìm thấy POI với RP: $rp",
+        "images": <String>[],
+      },
+    );
+
+    if (poi['name'] == "Không tìm thấy") {
+      print("Không tìm thấy POI với RP: $rp");
+      return;
+    }
+
     if (startPOI == null) {
       startPOI = rp;
-    } else if (endPOI == null) {
+      selectedMarkerRP = rp;
+    } else if (endPOI == null && rp != startPOI) {
       endPOI = rp;
-      _drawRoute();
+      secondSelectedMarkerRP = rp;
+      _drawRoute(context, setStateCallback);
     } else {
       startPOI = rp;
       endPOI = null;
+      selectedMarkerRP = rp;
+      secondSelectedMarkerRP = null;
       selectedRoute = [];
+      directions.clear();
+      segmentDistances.clear();
+      pathDistance = null;
     }
-  }
-Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
-  return FlutterMap(
-    mapController: mapController,
-    options: MapOptions(
-      center: LatLng(11.957103446948263, 108.4451276943349),
-      zoom: currentZoom,
-      minZoom: 5.0,
-      maxZoom: 22.0,
-      interactiveFlags: InteractiveFlag.all,
-      onPositionChanged: (position, hasGesture) {
-        if (position.zoom != null) {
-          currentZoom = position.zoom!;
-          setStateCallback();
-        }
-      },
-    ),
-    children: [
-      TileLayer(
-        urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        subdomains: ['a', 'b', 'c'],
-      ),
-      if (geoJsonParser.polygons.isNotEmpty)
-        PolygonLayer(polygons: geoJsonParser.polygons),
-      if (geoJsonParser.polylines.isNotEmpty)
-        PolylineLayer(polylines: geoJsonParser.polylines),
 
-      // MARKERS LAYER (POIs + User)
-      MarkerLayer(
-        rotate: true,
-        markers: [
-          // POI markers
-          ...poiList.map((poi) {
-            final isSelected = poi['rp'] == selectedMarkerRP || poi['rp'] == secondSelectedMarkerRP;
-            return Marker(
-              point: poi['coordinates'] as LatLng,
-              width: 80.0,
-              height: 80.0,
-              child: GestureDetector(
-                onTap: () {
-                  _onPOITap(poi['rp'] as String);
-                  setStateCallback();
-                },
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-                      decoration: BoxDecoration(
-                        color: isSelected ? Colors.green.withOpacity(0.7) : Colors.white.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(4.0),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.5,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    poi['name'],
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                poi['description'] ?? 'Không có mô tả',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      startPOI = rp;
+                      selectedMarkerRP = rp;
+                      if (endPOI != null && startPOI != endPOI) {
+                        _drawRoute(context, setStateCallback);
+                      }
+                      setStateCallback();
+                      Navigator.of(context).pop();
+                    },
+                    icon: const Icon(Icons.play_arrow, color: Colors.white),
+                    label: Text(
+                      "Bắt đầu",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Text(
-                        poi['name'] ?? "Unknown",
-                        style: TextStyle(
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      startPOI = userPositionRP;
+                      selectedMarkerRP = userPositionRP;
+                      endPOI = rp;
+                      secondSelectedMarkerRP = rp;
+                      _drawRoute(context, setStateCallback);
+                      Navigator.of(context).pop();
+                    },
+                    icon: const Icon(Icons.directions, color: Colors.white),
+                    label: Text(
+                      "Tìm đường",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child:
+                    poi['images'] != null && (poi['images'] as List).isNotEmpty
+                        ? ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: (poi['images'] as List).length,
+                            itemBuilder: (context, index) {
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 10),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.network(
+                                    (poi['images'] as List)[index],
+                                    width: 150,
+                                    height: 100,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        width: 150,
+                                        height: 100,
+                                        color: Colors.grey,
+                                        child: const Center(
+                                          child: Icon(Icons.error,
+                                              color: Colors.white),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : const Center(child: Text("Không có hình ảnh")),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    setStateCallback();
+  }
+
+  Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
+    return Stack(
+      children: [
+        FlutterMap(
+          mapController: mapController,
+          options: MapOptions(
+            center: LatLng(11.957103446948263, 108.4451276943349),
+            zoom: currentZoom,
+            minZoom: 5.0,
+            maxZoom: 22.0,
+            interactiveFlags: InteractiveFlag.all,
+            onPositionChanged: (position, hasGesture) {
+              if (position.zoom != null) {
+                currentZoom = position.zoom!;
+                setStateCallback();
+              }
+            },
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+              subdomains: ['a', 'b', 'c'],
+            ),
+            if (geoJsonParser.polygons.isNotEmpty)
+              PolygonLayer(polygons: geoJsonParser.polygons),
+            if (geoJsonParser.polylines.isNotEmpty)
+              PolylineLayer(polylines: geoJsonParser.polylines),
+
+            MarkerLayer(
+              rotate: true,
+              markers: [
+                ...poiList
+                    .map((poi) {
+                      if (poi['rp'] == userPositionRP)
+                        return null;
+                      final isSelected = poi['rp'] == selectedMarkerRP ||
+                          poi['rp'] == secondSelectedMarkerRP;
+                      return Marker(
+                        point: poi['coordinates'] as LatLng,
+                        width: isSelected ? 80.0 : 60.0,
+                        height: isSelected ? 80.0 : 60.0,
+                        child: GestureDetector(
+                          onTap: () {
+                            _onPOITap(
+                                poi['rp'] as String, context, setStateCallback);
+                          },
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 4.0, vertical: 2.0),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? Colors.green.withOpacity(0.7)
+                                      : Colors.white.withOpacity(0.7),
+                                  borderRadius: BorderRadius.circular(4.0),
+                                ),
+                                child: Text(
+                                  poi['name'] ?? "Unknown",
+                                  style: TextStyle(
+                                    fontSize: isSelected ? 10 : 8,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                              isSelected
+                                  ? Icon(
+                                      Icons.location_on,
+                                      color: Colors.red,
+                                      size: 30,
+                                    )
+                                  : Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.red.withOpacity(0.6),
+                                        border: Border.all(
+                                          color: Colors.red,
+                                          width: 1,
+                                        ),
+                                      ),
+                                    ),
+                            ],
+                          ),
+                        ),
+                      );
+                    })
+                    .where((marker) => marker != null)
+                    .cast<Marker>(),
+
+                Marker(
+                  point: userPositionCoordinates,
+                  width: selectedMarkerRP == userPositionRP ? 80.0 : 60.0,
+                  height: selectedMarkerRP == userPositionRP ? 80.0 : 60.0,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                        decoration: BoxDecoration(
+                          color: selectedMarkerRP == userPositionRP
+                              ? Colors.green.withOpacity(0.7)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(4.0),
+                        ),
+                        child: Text(
+                          "User",
+                          style: TextStyle(
+                            fontSize:
+                                selectedMarkerRP == userPositionRP ? 12 : 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
                         ),
                       ),
-                    ),
-                    Icon(
-                      Icons.location_on,
-                      color: isSelected ? Colors.green : Colors.red,
-                      size: 30,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
-
-          // USER POSITION marker
-          Marker(
-            point: userPositionCoordinates,
-            width: 80.0,
-            height: 80.0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(4.0),
+                      Icon(
+                        Icons.person_pin_circle,
+                        color: selectedMarkerRP == userPositionRP
+                            ? Colors.red
+                            : Colors.blue,
+                        size: 32,
+                      ),
+                    ],
                   ),
-                  child: Text(
-                    "User",
-                    style: TextStyle(
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                ),
-                Icon(
-                  Icons.person_pin_circle,
-                  color: Colors.blue,
-                  size: 30,
                 ),
               ],
             ),
-          ),
-        ],
-      ),
 
-      // PATH / ROUTE LINE
-      if (selectedRoute.isNotEmpty)
-        PolylineLayer(
-          polylines: [
-            Polyline(
-              points: selectedRoute,
-              color: Colors.red,
-              strokeWidth: 4.0,
-            ),
+            if (selectedRoute.isNotEmpty)
+              PolylineLayer(
+                polylines: [
+                  Polyline(
+                    points: selectedRoute,
+                    color: Colors.red,
+                    strokeWidth: 4.0,
+                  ),
+                ],
+              ),
           ],
         ),
-    ],
-  );
-}
+        if (pathDistance != null)
+          Positioned(
+            top: 10,
+            left: 10,
+            child: Container(
+              padding: const EdgeInsets.all(8.0),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+              child: Text(
+                "Tổng khoảng cách: ${pathDistance!.toStringAsFixed(2)} mét",
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }
