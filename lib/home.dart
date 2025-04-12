@@ -91,12 +91,20 @@ print("User Position: $userPositionCoordinates");
       print("❌ Lỗi khi quét và gửi dữ liệu Wi-Fi: $e");
     }
   }
-  Future<void> startWifiTracking() async {
-  // Bắt đầu quét Wi-Fi mỗi 5 giây (hoặc thời gian bạn muốn)
+Future<void> startWifiTracking() async {
+  // Bắt đầu quét Wi-Fi mỗi 5 giây
   wifiScanTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
     // Quét Wi-Fi và gửi dữ liệu
     await scanAndSendWiFiData();
   });
+}
+
+// Hàm dừng quét Wi-Fi
+Future<void> stopWifiTracking() async {
+   if (wifiScanTimer != null && wifiScanTimer!.isActive) {
+    wifiScanTimer?.cancel(); // Hủy Timer để dừng quét
+    print("❌ Dừng quét Wi-Fi");
+  }
 }
   void getCategories() {
     categories = CategoryModel.getCategories();
@@ -272,9 +280,51 @@ print("User Position: $userPositionCoordinates");
       print("❌ Error sending data: $e");
     }
   }
+Container _categoriesMethod() {
+  return Container(
+    height: 50, // Đặt chiều cao cho container
+    child: SingleChildScrollView(  // Đảm bảo có thể cuộn ngang
+      scrollDirection: Axis.horizontal,  // Cuộn theo hướng ngang
+      child: Row(
+        children: List.generate(categories.length, (index) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                // Xử lý khi bấm vào category
+              },
+              icon: Icon(
+                categories[index].icons.icon,  // Lấy icon từ category
+                color: Colors.green,
+              ),
+              label: Text(
+                categories[index].name,
+                style: GoogleFonts.openSans(
+                  fontWeight: FontWeight.w400,
+                  fontSize: 14,
+                  color: Colors.black,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color.fromARGB(255, 255, 255, 255),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                minimumSize: Size(100, 40),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              ),
+            ),
+          );
+        }),
+      ),
+    ),
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {
+    List<CategoryModel> categories = CategoryModel.getCategories(); 
     return Scaffold(
       backgroundColor: Color(0xffFFEBCD),
       bottomNavigationBar: _bottomNavBar(),
@@ -283,25 +333,10 @@ print("User Position: $userPositionCoordinates");
           Column(
             children: [
               _searchField(),
-              SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 15.0),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _categoryButton('Kệ sách', Icons.book),
-                      _categoryButton('Khu vực đọc', Icons.menu_book),
-                      _categoryButton('Phòng vệ sinh', Icons.people),
-                      _categoryButton('Căn tin', Icons.food_bank),
-                      _categoryButton('Phòng học', Icons.class_),
-                      _categoryButton('Phòng thí nghiệm', Icons.science),
-                      _categoryButton('Phòng máy tính', Icons.computer),
-                    ],
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
+              SizedBox(height: 5),
+            
+             _categoriesMethod(),
+              SizedBox(height: 10),
               Expanded(
                 child: poiSelectionScreen.buildMapSection(context, () {
                   setState(() {});
@@ -316,9 +351,16 @@ print("User Position: $userPositionCoordinates");
               children: [
                 FloatingActionButton(
                   heroTag: "location_button",
-                  onPressed: () {
-                    poiSelectionScreen.mapController.move(
-                        LatLng(11.957222760551929, 108.44508052756397), 18);
+                 onPressed: () async {
+                    List<WiFiAccessPoint> wifiList =
+                    await WifiScanner.scanWiFi();
+                    
+                    await sendWiFiDataToServer();
+
+                    String? imagePath;
+                    if (imagePath != null) {
+                      profileImage = File(imagePath);
+                    }
                   },
                   backgroundColor: Colors.yellow,
                   child: Icon(Icons.my_location, color: Colors.black),
@@ -332,22 +374,7 @@ print("User Position: $userPositionCoordinates");
                 //   },
                 //   child: Icon(Icons.wifi),
                 // ),
-                FloatingActionButton(
-                  heroTag: "wifi_scan_button",
-                  onPressed: () async {
-                    List<WiFiAccessPoint> wifiList =
-                    await WifiScanner.scanWiFi();
-                    
-                    await sendWiFiDataToServer();
-
-                    String? imagePath;
-                    if (imagePath != null) {
-                      profileImage = File(imagePath);
-                    }
-                  },
-                  backgroundColor: Colors.blue,
-                  child: Icon(Icons.wifi, color: Colors.white),
-                ),
+               
                 // Button để bắt đầu quét Wi-Fi
 FloatingActionButton(
   heroTag: "wifi_tracking_button",
@@ -355,6 +382,14 @@ FloatingActionButton(
     startWifiTracking();
   },
   backgroundColor: Colors.blue,
+  child: Icon(Icons.wifi, color: Colors.white),
+),
+FloatingActionButton(
+  heroTag: "stop_tracking_button",
+  onPressed: () {
+    stopWifiTracking();
+  },
+  backgroundColor: Colors.red,
   child: Icon(Icons.wifi, color: Colors.white),
 ),
 

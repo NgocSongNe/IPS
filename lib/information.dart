@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/account.dart';
 import 'package:flutter_application_1/home.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_application_1/models/category_model.dart';
 import 'package:image_picker/image_picker.dart';
 import 'Location.dart';
 
@@ -16,12 +17,16 @@ class InformationPage extends StatefulWidget {
 class _InformationPageState extends State<InformationPage> {
   int currentPageIndex = 1;
   List<Widget> postCards = [];
-
+  List<CategoryModel> categories = [];
   @override
   void initState() {
     super.initState();
+     getCategories();
     // Initialize with some post cards (mô phỏng)
     postCards = List.generate(3, (index) => _buildPostCard());
+  }
+  void getCategories() {
+    categories = CategoryModel.getCategories();
   }
 
   void _showAddPostDialog() {
@@ -128,7 +133,7 @@ class _InformationPageState extends State<InformationPage> {
           children: [
             _searchField(),
             SizedBox(height: 20),
-            _buildCategoryButtons(),
+            _categoriesMethod(),
             SizedBox(height: 20),
             _buildPostCards(),
           ],
@@ -184,41 +189,43 @@ class _InformationPageState extends State<InformationPage> {
       ),
     );
   }
-
-  Widget _buildCategoryButtons() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 15.0),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            _categoryButton('Kệ sách', Icons.book),
-            _categoryButton('Khu vực đọc', Icons.menu_book),
-            _categoryButton('Phòng vệ sinh', Icons.people),
-            _categoryButton('Căn tin', Icons.food_bank),
-            _categoryButton('Phòng học', Icons.class_),
-            _categoryButton('Phòng thí nghiệm', Icons.science),
-            _categoryButton('Phòng máy tính', Icons.computer),
-          ],
-        ),
+Container _categoriesMethod() {
+  return Container(
+    height: 50, // Đặt chiều cao cho container
+    child: SingleChildScrollView(  // Đảm bảo có thể cuộn ngang
+      scrollDirection: Axis.horizontal,  // Cuộn theo hướng ngang
+      child: Row(
+        children: List.generate(categories.length, (index) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                // Xử lý khi bấm vào category
+              },
+              icon: categories[index].icons,
+              label: Text(
+                categories[index].name,
+                style: GoogleFonts.openSans(
+                  fontWeight: FontWeight.w400,
+                  fontSize: 14,
+                  color: Colors.black,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color.fromARGB(255, 255, 255, 255),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                minimumSize: Size(100, 40),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              ),
+            ),
+          );
+        }),
       ),
-    );
-  }
-
-  Widget _categoryButton(String title, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-      child: ElevatedButton.icon(
-        onPressed: () {},
-        icon: Icon(icon, color: Colors.black),
-        label: Text(title, style: GoogleFonts.openSans(color: Colors.black)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildPostCards() {
     return Column(

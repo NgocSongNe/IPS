@@ -25,17 +25,46 @@ class CategoryModel {
     categories.add(
       CategoryModel(
         name: 'Khu vực đọc',
-        icons: Icon(Icons.read_more),
+        icons: Icon(Icons.menu_book),
         boxColor: Color(0xffE1E1E1)
       )
     );
     categories.add(
       CategoryModel(
         name: 'Phòng vệ sinh',
-        icons: Icon(Icons.wc),
+        icons: Icon(Icons.people),
         boxColor: Color(0xffE1E1E1)
       )
     );
+     categories.add(
+      CategoryModel(
+        name: 'Căn tin',
+        icons: Icon(Icons.food_bank),
+        boxColor: Color(0xffE1E1E1)
+      )
+    );
+     categories.add(
+      CategoryModel(
+        name: 'Phòng học',
+        icons: Icon(Icons.class_),
+        boxColor: Color(0xffE1E1E1)
+      )
+    );
+     categories.add(
+      CategoryModel(
+        name: 'Phòng thí nghiệm',
+        icons: Icon(Icons.science),
+        boxColor: Color(0xffE1E1E1)
+      )
+    );
+     categories.add(
+      CategoryModel(
+        name: 'Phòng máy tính',
+        icons: Icon(Icons.computer),
+        boxColor: Color(0xffE1E1E1)
+      )
+    );
+
     return categories;
   }
 }

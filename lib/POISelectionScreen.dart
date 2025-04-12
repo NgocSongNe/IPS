@@ -408,16 +408,18 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
       maxZoom: 22.0,
       interactiveFlags: InteractiveFlag.all,
       onPositionChanged: (position, hasGesture) {
-        if (position.zoom != null) {
-          currentZoom = position.zoom!;
-          setStateCallback();  // Rebuild the widget to update the zoom
-        }
-        if (position.center != null) {
-          // Update the center position of the map if it changes
-          userPositionCoordinates = position.center!;  // Update user position
-          setStateCallback();  // Notify parent to update the state
-        }
-      },
+  if (position.zoom != null) {
+    currentZoom = position.zoom!;
+    setStateCallback();  // Rebuild the widget to update the zoom
+  }
+
+  // Cập nhật lại vị trí người dùng chỉ khi không phải do thao tác của người dùng
+  if (position.center != null && !hasGesture) {
+    // Cập nhật lại vị trí người dùng chỉ khi không phải kéo bản đồ
+    userPositionCoordinates = position.center!;
+    setStateCallback();  // Notify parent to update the state
+  }
+},
     ),
     children: [
       TileLayer(
