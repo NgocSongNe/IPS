@@ -425,14 +425,6 @@ String userPositionRP = "userPosition";
           });
         }
 
-        // Thêm vị trí của User vào poiList để có thể sử dụng trong graph
-        poiList.add({
-          "name": "User Position",
-          "rp": userPositionCoordinates.toString(),
-          "coordinates": userPositionCoordinates,
-          "description": "Vị trí hiện tại của bạn",
-          "images": <String>[],
-        });
 
         for (int i = 0; i < waypoints.length; i++) {
           poiList.add({
@@ -444,13 +436,7 @@ String userPositionRP = "userPosition";
           });
         }
 
-        poiList.add({
-          "name": "User Position",
-          "rp": userPositionRP,
-          "coordinates": userPositionCoordinates,
-          "description": "Vị trí hiện tại của bạn",
-          "images": <String>[],
-        });
+ 
 
         graph = _generateGraph();
         print("Graph generated: $graph");
