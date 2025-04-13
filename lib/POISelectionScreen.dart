@@ -6,7 +6,6 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'dart:math';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_tts/flutter_tts.dart';
 
 class POISelectionScreen {
   final MapController mapController = MapController();
@@ -34,17 +33,15 @@ String userPositionRP = "userPosition";
     loadGeoJson().then((_) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _focusOnPOIs());
     });
-    _initTts();
   }
 
  
   String? selectedMarkerRP; // Track the currently selected marker
   String? secondSelectedMarkerRP; // Track the second selected marker
 
-  final BuildContext context;
+  final BuildContext context; // Thêm BuildContext để sử dụng DefaultAssetBundle
 
-  final FlutterTts _flutterTts = FlutterTts();
-
+  // Ánh xạ từ RP tới tên thư mục hình ảnh
   final Map<String, String> rpToFolderMap = {
     "1": "tv3_4",
     "2": "cua_ra_vao",
@@ -87,26 +84,6 @@ String userPositionRP = "userPosition";
     "39": "phong_tap_chi",
     "40": "cau_thang_tang_2",
   };
-  Future<void> _initTts() async {
-    await _flutterTts.setLanguage("vi-VN");
-    await _flutterTts.setSpeechRate(0.5);
-    await _flutterTts.setVolume(1.0);
-    await _flutterTts.setPitch(1.0);
-  }
-
-  Future<void> _speakDirections() async {
-    if (directions.isEmpty) return;
-    for (int i = 0; i < directions.length; i++) {
-      String direction = directions[i];
-      String distanceText = i < segmentDistances.length
-          ? " ${segmentDistances[i].toStringAsFixed(2)} mét"
-          : "";
-      String textToSpeak = "$direction$distanceText";
-      await _flutterTts.speak(textToSpeak);
-      await Future.delayed(Duration(seconds: 2));
-    }
-  }
-
   Future<List<String>> _getImagesFromFolder(String folderName) async {
     try {
       final manifestContent =
@@ -125,11 +102,9 @@ String userPositionRP = "userPosition";
   void _calculateDirections() {
     directions.clear();
     segmentDistances.clear();
-    if (selectedRoute.length < 2) {
-      print("Selected route has less than 2 points, cannot calculate directions.");
-      return;
-    }
+    if (selectedRoute.length < 2) return; // Cần ít nhất 2 điểm để có hướng dẫn
 
+    // Duyệt qua từng cặp điểm liên tiếp để xác định hướng
     for (int i = 0; i < selectedRoute.length - 1; i++) {
       double segmentDistance = _calculateDistance(selectedRoute[i], selectedRoute[i + 1]);
       segmentDistances.add(segmentDistance);
@@ -177,6 +152,8 @@ String userPositionRP = "userPosition";
   }
 
   void _showDirections(BuildContext context) {
+    if (directions.isEmpty && pathDistance == null) return;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -185,14 +162,14 @@ String userPositionRP = "userPosition";
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (pathDistance != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: Text(
-                  "Tổng khoảng cách: ${pathDistance != null ? pathDistance!.toStringAsFixed(2) : '0.00'} mét",
+                    "Tổng khoảng cách: ${pathDistance!.toStringAsFixed(2)} mét",
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
-              if (directions.isNotEmpty)
               ...directions.asMap().entries.map((entry) {
               int index = entry.key + 1;
               String direction = entry.value;
@@ -203,9 +180,7 @@ String userPositionRP = "userPosition";
                 padding: const EdgeInsets.symmetric(vertical: 4.0),
                   child: Text("$index. $direction$distanceText"),
               );
-                }).toList()
-              else
-                const Text("Không có hướng dẫn nào."),
+            }).toList(),
             ],
           ),
         ),
@@ -310,48 +285,6 @@ String userPositionRP = "userPosition";
         print("Error loading GeoJSON from $endpoint: $e");
       }
     }
-    _computeHallwayIntersections();
-  }
-
-  void _computeHallwayIntersections() {
-    for (int i = 0; i < hallways.length; i++) {
-      for (int j = i + 1; j < hallways.length; j++) {
-        var hallway1 = hallways[i];
-        var hallway2 = hallways[j];
-        for (int k = 0; k < hallway1.length - 1; k++) {
-          for (int l = 0; l < hallway2.length - 1; l++) {
-            LatLng? intersection = _findIntersection(
-              hallway1[k], hallway1[k + 1],
-              hallway2[l], hallway2[l + 1],
-            );
-            if (intersection != null && !waypoints.contains(intersection)) {
-              waypoints.add(intersection);
-              print("Added intersection waypoint: $intersection");
-            }
-          }
-        }
-      }
-    }
-  }
-
-  LatLng? _findIntersection(LatLng p1, LatLng q1, LatLng p2, LatLng q2) {
-    double x1 = p1.latitude, y1 = p1.longitude;
-    double x2 = q1.latitude, y2 = q1.longitude;
-    double x3 = p2.latitude, y3 = p2.longitude;
-    double x4 = q2.latitude, y4 = q2.longitude;
-
-    double denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-    if (denom == 0) return null;
-
-    double t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
-    double u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
-
-    if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
-      double x = x1 + t * (x2 - x1);
-      double y = y1 + t * (y2 - y1);
-      return LatLng(x, y);
-    }
-    return null;
   }
 
   void _focusOnPOIs() {
@@ -404,9 +337,7 @@ String userPositionRP = "userPosition";
         for (var feature in poiJson['features']) {
           final properties = feature['properties'];
           final coordinates = feature['geometry']['coordinates'];
-          if (properties['Name'] == 'Cầu thang') {
-          continue; // Bỏ qua POI này
-        }
+
           // Lấy RP của POI
           String rp = properties['RP'] ?? 'unknown';
 
@@ -426,7 +357,13 @@ String userPositionRP = "userPosition";
         }
 
         // Thêm vị trí của User vào poiList để có thể sử dụng trong graph
-        
+        poiList.add({
+          "name": "User Position",
+          "rp": userPositionCoordinates.toString(),
+          "coordinates": userPositionCoordinates,
+          "description": "Vị trí hiện tại của bạn",
+          "images": <String>[],
+        });
 
         for (int i = 0; i < waypoints.length; i++) {
           poiList.add({
@@ -438,10 +375,7 @@ String userPositionRP = "userPosition";
           });
         }
 
-     
-
         graph = _generateGraph();
-        print("Graph generated: $graph");
       } else {
         print("Failed to load POI data: ${response.statusCode}");
       }
@@ -457,67 +391,19 @@ String userPositionRP = "userPosition";
       String poiRP = poi["rp"];
       generatedGraph[poiRP] = [];
       LatLng coordinates = poi["coordinates"];
-    }
 
-    for (var wp1 in poiList.where((poi) => poi["rp"].startsWith("wp_"))) {
-      String wp1RP = wp1["rp"];
-      LatLng wp1Coords = wp1["coordinates"];
-
-      for (var wp2 in poiList.where((poi) => poi["rp"].startsWith("wp_"))) {
-        if (wp1 == wp2) continue;
-        String wp2RP = wp2["rp"];
-        LatLng wp2Coords = wp2["coordinates"];
-
-        if (!_isPathBlocked(wp1Coords, wp2Coords)) {
-          double distance = _calculateDistance(wp1Coords, wp2Coords);
-          generatedGraph[wp1RP]!.add({"rp": wp2RP, "distance": distance});
-          print("Added edge between waypoints: $wp1RP -> $wp2RP, distance: $distance");
-        }
-      }
-    }
-
-    for (var poi in poiList) {
-      String poiRP = poi["rp"];
-      LatLng poiCoords = poi["coordinates"];
-
-      List<Map<String, dynamic>> nearestWaypoints = [];
-      for (var wp in poiList.where((p) => p["rp"].startsWith("wp_"))) {
-        LatLng wpCoords = wp["coordinates"];
-        if (!_isPathBlocked(poiCoords, wpCoords)) {
-          double distance = _calculateDistance(poiCoords, wpCoords);
-          nearestWaypoints.add({
-            "rp": wp["rp"],
-            "coordinates": wpCoords,
-            "distance": distance,
-          });
-        }
-      }
-
-      nearestWaypoints.sort((a, b) => a["distance"].compareTo(b["distance"]));
-      var closestWaypoints = nearestWaypoints.take(3).toList();
-
-      for (var wp in closestWaypoints) {
-        String wpRP = wp["rp"];
-        double distance = wp["distance"];
-        generatedGraph[poiRP]!.add({"rp": wpRP, "distance": distance});
-        generatedGraph[wpRP]!.add({"rp": poiRP, "distance": distance});
-        print("Added edge: $poiRP -> $wpRP, distance: $distance");
-      }
-
-      if (closestWaypoints.isEmpty) {
       for (var otherPoi in poiList) {
         if (otherPoi == poi) continue;
         String otherRP = otherPoi["rp"];
-          LatLng otherCoords = otherPoi["coordinates"];
-          if (!_isPathBlocked(poiCoords, otherCoords)) {
-            double distance = _calculateDistance(poiCoords, otherCoords);
+        LatLng otherCoordinates = otherPoi["coordinates"];
+
+        if (_isPathInHallway(coordinates, otherCoordinates) &&
+            !_isPathBlocked(coordinates, otherCoordinates)) {
+          double distance = _calculateDistance(coordinates, otherCoordinates);
           generatedGraph[poiRP]!.add({"rp": otherRP, "distance": distance});
-            print("Added direct edge: $poiRP -> $otherRP, distance: $distance");
         }
       }
     }
-    }
-
     return generatedGraph;
   }
 
@@ -527,6 +413,17 @@ String userPositionRP = "userPosition";
         if (_doLinesIntersect(start, end, wall[i], wall[i + 1])) {
           return true;
         }
+      }
+    }
+    return false;
+  }
+
+  bool _isPathInHallway(LatLng start, LatLng end) {
+    if (hallways.isEmpty) return true;
+
+    for (var hallway in hallways) {
+      if (_isPointInPolygon(start, hallway) && _isPointInPolygon(end, hallway)) {
+        return true;
       }
     }
     return false;
@@ -583,68 +480,53 @@ String userPositionRP = "userPosition";
 
   List<LatLng> _findShortestPath(String start, String end) {
     if (!graph.containsKey(start) || !graph.containsKey(end)) {
-      print("Start or end POI not found in the graph: start=$start, end=$end");
+      print("Start or end POI not found in the graph.");
       return [];
     }
 
-    final Map<String, double> gScore = {for (var node in graph.keys) node: double.infinity};
-    final Map<String, double> fScore = {for (var node in graph.keys) node: double.infinity};
-    final Map<String, String?> cameFrom = {for (var node in graph.keys) node: null};
-    final List<String> openSet = [start];
-    final Set<String> closedSet = {};
+    final Map<String, double> distances = {};
+    final Map<String, String?> previous = {};
+    final List<String> unvisited = [];
 
-    gScore[start] = 0;
-    fScore[start] = _heuristic(start, end);
+    for (var node in graph.keys) {
+      distances[node] = double.infinity;
+      previous[node] = null;
+      unvisited.add(node);
+    }
+    distances[start] = 0;
 
-    while (openSet.isNotEmpty) {
-      openSet.sort((a, b) => fScore[a]!.compareTo(fScore[b]!));
-      final current = openSet.removeAt(0);
+    while (unvisited.isNotEmpty) {
+      unvisited.sort((a, b) => distances[a]!.compareTo(distances[b]!));
+      final current = unvisited.removeAt(0);
 
-      if (current == end) {
-        final path = <String>[];
-        String? temp = current;
-        while (temp != null) {
-          path.insert(0, temp);
-          temp = cameFrom[temp];
-        }
-        final route = path.map((rp) {
-          return poiList.firstWhere((poi) => poi['rp'] == rp)['coordinates'] as LatLng;
-        }).toList();
-        print("Shortest path found: $path");
-        print("Route coordinates: $route");
-        return route;
-      }
-
-      closedSet.add(current);
+      if (current == end) break;
 
       for (var neighbor in graph[current]!) {
-        final neighborRP = neighbor['rp'];
-        if (closedSet.contains(neighborRP)) continue;
-
-        final tentativeGScore = gScore[current]! + neighbor['distance'];
-
-        if (!openSet.contains(neighborRP)) {
-          openSet.add(neighborRP);
-        } else if (tentativeGScore >= gScore[neighborRP]!) {
-          continue;
+        final newDist = distances[current]! + neighbor['distance'];
+        if (newDist < distances[neighbor['rp']]!) {
+          distances[neighbor['rp']] = newDist;
+          previous[neighbor['rp']] = current;
         }
-
-        cameFrom[neighborRP] = current;
-        gScore[neighborRP] = tentativeGScore;
-        fScore[neighborRP] = gScore[neighborRP]! + _heuristic(neighborRP, end);
       }
     }
 
+    final path = <String>[];
+    var current = end;
+    while (current.isNotEmpty && previous[current] != null) {
+      path.insert(0, current);
+      current = previous[current]!;
+    }
+    if (path.isNotEmpty && distances[end] != double.infinity) {
+      path.insert(0, start);
+    } else {
       print("No path found from $start to $end");
       return [];
     }
 
-  double _heuristic(String current, String goal) {
-    final currentPoi = poiList.firstWhere((poi) => poi['rp'] == current);
-    final goalPoi = poiList.firstWhere((poi) => poi['rp'] == goal);
-    final currentCoords = currentPoi['coordinates'] as LatLng;
-    final goalCoords = goalPoi['coordinates'] as LatLng;
-    return _calculateDistance(currentCoords, goalCoords);
+    return path.map((rp) {
+      return poiList.firstWhere((poi) => poi['rp'] == rp)['coordinates']
+          as LatLng;
+    }).toList();
   }
 
   double _calculateDistance(LatLng point1, LatLng point2) {
@@ -669,54 +551,19 @@ String userPositionRP = "userPosition";
     return totalDistance;
   }
 
-  void _drawRouteCD(BuildContext context, VoidCallback setStateCallback, {required bool showDirections}) {
-    print("Drawing route: startPOI=$startPOI, endPOI=$endPOI");
+   void _drawRoute(BuildContext context, VoidCallback setStateCallback) {
     if (startPOI != null && endPOI != null) {
       selectedRoute = _findShortestPath(startPOI!, endPOI!);
       if (selectedRoute.isNotEmpty) {
         pathDistance = _calculatePathDistance(selectedRoute);
-        print("Path distance calculated: $pathDistance meters");
         _calculateDirections();
-        if (showDirections) {
-          print("Showing directions dialog...");
         _showDirections(context);
-          _speakDirections();
-        }
         setStateCallback();
       } else {
-        print("No route found between $startPOI and $endPOI");
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Không tìm thấy đường đi giữa hai điểm")),
         );
       }
-    } else {
-      print("StartPOI or EndPOI is null: startPOI=$startPOI, endPOI=$endPOI");
-    }
-  }
-
-
-  void _drawRoute(BuildContext context, VoidCallback setStateCallback, {required bool showDirections}) {
-    print("Drawing route: startPOI=$startPOI, endPOI=$endPOI");
-    if (startPOI != null && endPOI != null) {
-      selectedRoute = _findShortestPath(startPOI!, endPOI!);
-      if (selectedRoute.isNotEmpty) {
-        pathDistance = _calculatePathDistance(selectedRoute);
-        print("Path distance calculated: $pathDistance meters");
-        _calculateDirections();
-        if (showDirections) {
-          print("Showing directions dialog...");
-          _showDirections(context);
-        
-        }
-        setStateCallback();
-      } else {
-        print("No route found between $startPOI and $endPOI");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Không tìm thấy đường đi giữa hai điểm")),
-        );
-      }
-    } else {
-      print("StartPOI or EndPOI is null: startPOI=$startPOI, endPOI=$endPOI");
     }
   }
 
@@ -734,8 +581,25 @@ void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
       print("Không tìm thấy POI với RP: $rp");
       return;
     }
-selectedMarkerRP = rp; // Đặt POI vừa được tap là POI được chọn
-  setStateCallback(); 
+
+    if (startPOI == null) {
+      startPOI = rp;
+      selectedMarkerRP = rp;
+    } else if (endPOI == null && rp != startPOI) {
+      endPOI = rp;
+      secondSelectedMarkerRP = rp;
+      _drawRoute(context, setStateCallback);
+    } else {
+      startPOI = rp;
+      endPOI = null;
+      selectedMarkerRP = rp;
+      secondSelectedMarkerRP = null;
+      selectedRoute = [];
+      directions.clear();
+      segmentDistances.clear();
+      pathDistance = null;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -775,15 +639,12 @@ selectedMarkerRP = rp; // Đặt POI vừa được tap là POI được chọn
                 children: [
                   ElevatedButton.icon(
                     onPressed: () {
-                      print("Bắt đầu button pressed: Setting startPOI to $userPositionRP, endPOI to $rp");
-                      startPOI = userPositionRP;
-                      endPOI = rp;
-                      selectedMarkerRP = userPositionRP;
-                      secondSelectedMarkerRP = rp;
-
-                      _drawRouteCD(context, setStateCallback, showDirections: true);
-
-                      print("Closing POI info modal...");
+                      startPOI = rp;
+                      selectedMarkerRP = rp;
+                      if (endPOI != null && startPOI != endPOI) {
+                        _drawRoute(context, setStateCallback);
+                      }
+                      setStateCallback();
                       Navigator.of(context).pop();
                     },
                     icon: const Icon(Icons.play_arrow, color: Colors.white),
@@ -802,12 +663,10 @@ selectedMarkerRP = rp; // Đặt POI vừa được tap là POI được chọn
                   ElevatedButton.icon(
                     onPressed: () {
                       startPOI = userPositionRP;
-                      endPOI = rp;
                       selectedMarkerRP = userPositionRP;
+                      endPOI = rp;
                       secondSelectedMarkerRP = rp;
-                      _drawRoute(context, setStateCallback, showDirections: true);
-
-                      print("Closing POI info modal...");
+                      _drawRoute(context, setStateCallback);
                       Navigator.of(context).pop();
                     },
                     icon: const Icon(Icons.directions, color: Colors.white),
@@ -865,29 +724,6 @@ selectedMarkerRP = rp; // Đặt POI vừa được tap là POI được chọn
 
     setStateCallback();
   }
-void _onStartButtonPressed(BuildContext context, VoidCallback setStateCallback) {
-  print("Bắt đầu button pressed: Setting startPOI to $userPositionRP, endPOI to $selectedMarkerRP");
-  startPOI = userPositionRP;
-  endPOI = selectedMarkerRP; // Chọn POI kết thúc
-
-  // Cập nhật màu sắc của marker sau khi bắt đầu chỉ đường
-  selectedMarkerRP = selectedMarkerRP;  // Đổi thành màu đỏ khi bắt đầu
-
-  _drawRouteCD(context, setStateCallback, showDirections: true);
-  setStateCallback(); // Cập nhật lại giao diện
-}
-
-void _onDirectionsButtonPressed(BuildContext context, VoidCallback setStateCallback) {
-  print("Chỉ đường button pressed: Setting startPOI to $userPositionRP, endPOI to $selectedMarkerRP");
-  startPOI = userPositionRP;
-  endPOI = selectedMarkerRP;
-
-  // Cập nhật màu sắc của marker khi chỉ đường
-  selectedMarkerRP = selectedMarkerRP;  // Đổi thành màu đỏ khi chỉ đường
-
-  _drawRoute(context, setStateCallback, showDirections: true);
-  setStateCallback(); // Cập nhật lại giao diện
-}
 
 
 Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
@@ -898,7 +734,7 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
     options: MapOptions(
       center: userPositionCoordinates,  // Updated coordinates
       zoom: currentZoom,
-      minZoom: 15.0,
+      minZoom: 5.0,
       maxZoom: 22.0,
       interactiveFlags: InteractiveFlag.all,
       onPositionChanged: (position, hasGesture) {
@@ -911,12 +747,7 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
   if (position.center != null && !hasGesture) {
     // Cập nhật lại vị trí người dùng chỉ khi không phải kéo bản đồ
     userPositionCoordinates = position.center!;
-                final userPoiIndex = poiList.indexWhere((poi) => poi['rp'] == userPositionRP);
-                if (userPoiIndex != -1) {
-                  poiList[userPoiIndex]['coordinates'] = userPositionCoordinates;
-                  graph = _generateGraph();
-                }
-                setStateCallback();
+    setStateCallback();  // Notify parent to update the state
   }
 },
     ),
@@ -934,64 +765,67 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
       MarkerLayer(
         rotate: true,
         markers: [
-                if (currentZoom >= 20) // Only show POIs if zoom level is high enough
-                  ...poiList.map((poi) {
-                    if (poi['rp'] == userPositionRP) return null;
-                    final isSelected = poi['rp'] == selectedMarkerRP || poi['rp'] == secondSelectedMarkerRP;
-                    return Marker(
-                      point: poi['coordinates'] as LatLng,
-                      width: isSelected ? 80.0 : 60.0,
-                      height: isSelected ? 80.0 : 60.0,
-                      child: GestureDetector(
-                        onTap: () {
-                          _onPOITap(poi['rp'] as String, context, setStateCallback);
-                          setStateCallback(); // Update state when POI is tapped
-                        },
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? Colors.red.withOpacity(0.7)
-                                    : Colors.white.withOpacity(0.7),
-                                borderRadius: BorderRadius.circular(4.0),
-                              ),
-                              child: Text(
-                                poi['name'] ?? "Unknown",
-                                style: TextStyle(
-                                  fontSize: isSelected ? 10 : 8,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            ),
-                            isSelected
-                                ? Icon(
-                                    Icons.location_on,
-                                    color: Colors.red,
-                                    size: 30,
-                                  )
-                                : Container(
-                                    width: 10,
-                                    height: 10,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.red.withOpacity(0.6),
-                                      border: Border.all(
-                                        color: Colors.red,
-                                        width: 1,
-                                      ),
-                                    ),
-                                  ),
-                          ],
+                ...poiList
+                    .map((poi) {
+                      if (poi['rp'] == userPositionRP)
+                        return null;
+                      final isSelected = poi['rp'] == selectedMarkerRP ||
+                          poi['rp'] == secondSelectedMarkerRP;
+            return Marker(
+              point: poi['coordinates'] as LatLng,
+                        width: isSelected ? 80.0 : 60.0,
+                        height: isSelected ? 80.0 : 60.0,
+              child: GestureDetector(
+                onTap: () {
+                  _onPOITap(poi['rp'] as String, context, setStateCallback);
+                  setStateCallback();  // Update state when POI is tapped
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                      decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? Colors.green.withOpacity(0.7)
+                                      : Colors.white.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(4.0),
+                      ),
+                      child: Text(
+                        poi['name'] ?? "Unknown",
+                        style: TextStyle(
+                                    fontSize: isSelected ? 10 : 8,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
                         ),
                       ),
-                    );
-                  })
-                  .where((marker) => marker != null)
-                  .cast<Marker>(),
+                    ),
+                              isSelected
+                                  ? Icon(
+                      Icons.location_on,
+                                      color: Colors.red,
+                      size: 30,
+                                    )
+                                  : Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.red.withOpacity(0.6),
+                                        border: Border.all(
+                                          color: Colors.red,
+                                          width: 1,
+                                        ),
+                                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+                    })
+                    .where((marker) => marker != null)
+                    .cast<Marker>(),
+
           // USER POSITION marker
           Marker(
                   point: userPositionCoordinates,
