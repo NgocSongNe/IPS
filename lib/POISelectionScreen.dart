@@ -870,180 +870,167 @@ void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
     setStateCallback();
   }
 
-
 Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
-    return Stack(
-      children: [
-        FlutterMap(
-    mapController: mapController,
-    options: MapOptions(
-      center: userPositionCoordinates,  // Updated coordinates
-      zoom: currentZoom,
-      minZoom: 5.0,
-      maxZoom: 22.0,
-      interactiveFlags: InteractiveFlag.all,
-      onPositionChanged: (position, hasGesture) {
-  if (position.zoom != null) {
-    currentZoom = position.zoom!;
-    setStateCallback();  // Rebuild the widget to update the zoom
-  }
-
-  // Cập nhật lại vị trí người dùng chỉ khi không phải do thao tác của người dùng
-  if (position.center != null && !hasGesture) {
-    // Cập nhật lại vị trí người dùng chỉ khi không phải kéo bản đồ
-    userPositionCoordinates = position.center!;
-                final userPoiIndex = poiList.indexWhere((poi) => poi['rp'] == userPositionRP);
-                if (userPoiIndex != -1) {
-                  poiList[userPoiIndex]['coordinates'] = userPositionCoordinates;
-                  graph = _generateGraph();
-                }
-                setStateCallback();
-  }
-},
-    ),
+  return Stack(
     children: [
-      TileLayer(
-        urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        subdomains: ['a', 'b', 'c'],
-      ),
-      if (geoJsonParser.polygons.isNotEmpty)
-        PolygonLayer(polygons: geoJsonParser.polygons),
-      if (geoJsonParser.polylines.isNotEmpty)
-        PolylineLayer(polylines: geoJsonParser.polylines),
+      FlutterMap(
+        mapController: mapController,
+        options: MapOptions(
+          center: userPositionCoordinates,  // Updated coordinates
+          zoom: currentZoom,
+          minZoom: 15.0,
+          maxZoom: 22.0,
+          interactiveFlags: InteractiveFlag.all,
+          onPositionChanged: (position, hasGesture) {
+            if (position.zoom != null) {
+              currentZoom = position.zoom!;
+              setStateCallback();  // Rebuild the widget to update the zoom
+            }
 
-      // MARKERS LAYER (POIs + User)
-      MarkerLayer(
-        rotate: true,
-        markers: [
-                ...poiList
-                    .map((poi) {
-                      if (poi['rp'] == userPositionRP)
-                        return null;
-                      final isSelected = poi['rp'] == selectedMarkerRP ||
-                          poi['rp'] == secondSelectedMarkerRP;
-            return Marker(
-              point: poi['coordinates'] as LatLng,
-                        width: isSelected ? 80.0 : 60.0,
-                        height: isSelected ? 80.0 : 60.0,
-              child: GestureDetector(
-                onTap: () {
-                  _onPOITap(poi['rp'] as String, context, setStateCallback);
-                  setStateCallback();  // Update state when POI is tapped
-                },
+            // Update user position only when it's not triggered by a user action
+            if (position.center != null && !hasGesture) {
+              userPositionCoordinates = position.center!;
+              final userPoiIndex = poiList.indexWhere((poi) => poi['rp'] == userPositionRP);
+              if (userPoiIndex != -1) {
+                poiList[userPoiIndex]['coordinates'] = userPositionCoordinates;
+                graph = _generateGraph();
+              }
+              setStateCallback();
+            }
+          },
+        ),
+        children: [
+          TileLayer(
+            urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            subdomains: ['a', 'b', 'c'],
+          ),
+          if (geoJsonParser.polygons.isNotEmpty)
+            PolygonLayer(polygons: geoJsonParser.polygons),
+          if (geoJsonParser.polylines.isNotEmpty)
+            PolylineLayer(polylines: geoJsonParser.polylines),
+
+          // MARKERS LAYER (POIs + User)
+          MarkerLayer(
+            rotate: true,
+            markers: [
+              if (currentZoom >= 20) ...poiList.map((poi) {
+                if (poi['rp'] == userPositionRP) return null;
+
+                final isSelected = poi['rp'] == selectedMarkerRP || poi['rp'] == secondSelectedMarkerRP;
+                return Marker(
+                  point: poi['coordinates'] as LatLng,
+                  width: isSelected ? 80.0 : 60.0,
+                  height: isSelected ? 80.0 : 60.0,
+                  child: GestureDetector(
+                    onTap: () {
+                      _onPOITap(poi['rp'] as String, context, setStateCallback);
+                      setStateCallback();  // Update state when POI is tapped
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                          decoration: BoxDecoration(
+                            color: isSelected ? Colors.green.withOpacity(0.7) : Colors.white.withOpacity(0.7),
+                            borderRadius: BorderRadius.circular(4.0),
+                          ),
+                          child: Text(
+                            poi['name'] ?? "Unknown",
+                            style: TextStyle(
+                              fontSize: isSelected ? 10 : 8,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                        if (isSelected)
+                          Icon(
+                            Icons.location_on,
+                            color: Colors.red,
+                            size: 30,
+                          )
+                        else
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.red.withOpacity(0.6),
+                              border: Border.all(
+                                color: Colors.red,
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              }).whereType<Marker>().toList(),
+
+              // USER POSITION marker
+              Marker(
+                point: userPositionCoordinates,
+                width: selectedMarkerRP == userPositionRP ? 80.0 : 60.0,
+                height: selectedMarkerRP == userPositionRP ? 80.0 : 60.0,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                       decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? Colors.green.withOpacity(0.7)
-                                      : Colors.white.withOpacity(0.7),
+                        color: selectedMarkerRP == userPositionRP ? Colors.green.withOpacity(0.7) : Colors.white,
                         borderRadius: BorderRadius.circular(4.0),
                       ),
                       child: Text(
-                        poi['name'] ?? "Unknown",
+                        "User",  // Display "User"
                         style: TextStyle(
-                                    fontSize: isSelected ? 10 : 8,
+                          fontSize: selectedMarkerRP == userPositionRP ? 12 : 10,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
                         ),
                       ),
                     ),
-                              isSelected
-                                  ? Icon(
-                      Icons.location_on,
-                                      color: Colors.red,
-                      size: 30,
-                                    )
-                                  : Container(
-                                      width: 10,
-                                      height: 10,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.red.withOpacity(0.6),
-                                        border: Border.all(
-                                          color: Colors.red,
-                                          width: 1,
-                                        ),
-                                      ),
+                    Icon(
+                      Icons.person_pin_circle,
+                      color: selectedMarkerRP == userPositionRP ? Colors.red : Colors.blue,
+                      size: 32,
                     ),
                   ],
                 ),
               ),
-            );
-                    })
-                    .where((marker) => marker != null)
-                    .cast<Marker>(),
+            ],
+          ),
 
-          // USER POSITION marker
-          Marker(
-                  point: userPositionCoordinates,
-                  width: selectedMarkerRP == userPositionRP ? 80.0 : 60.0,
-                  height: selectedMarkerRP == userPositionRP ? 80.0 : 60.0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-                  decoration: BoxDecoration(
-                           color: selectedMarkerRP == userPositionRP
-                              ? Colors.green.withOpacity(0.7)
-                              : Colors.white,
-                    borderRadius: BorderRadius.circular(4.0),
-                  ),
-                  child: Text(
-                    "User",  // Display "User"
-                    style: TextStyle(
-                            fontSize:
-                                selectedMarkerRP == userPositionRP ? 12 : 10,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                ),
-                Icon(
-                  Icons.person_pin_circle,
-                        color: selectedMarkerRP == userPositionRP
-                            ? Colors.red
-                            : Colors.blue,
-                        size: 32,
+          // PATH / ROUTE LINE (if a route is selected)
+          if (selectedRoute.isNotEmpty)
+            PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: selectedRoute,
+                  color: Colors.red,
+                  strokeWidth: 4.0,
                 ),
               ],
             ),
-          ),
         ],
       ),
-
-      // PATH / ROUTE LINE (if a route is selected)
-      if (selectedRoute.isNotEmpty)
-        PolylineLayer(
-          polylines: [
-            Polyline(
-              points: selectedRoute,
-              color: Colors.red,
-              strokeWidth: 4.0,
+      if (pathDistance != null)
+        Positioned(
+          top: 10,
+          left: 10,
+          child: Container(
+            padding: const EdgeInsets.all(8.0),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(8.0),
             ),
-          ],
-              ),
-          ],
-        ),
-        if (pathDistance != null)
-          Positioned(
-            top: 10,
-            left: 10,
-            child: Container(
-              padding: const EdgeInsets.all(8.0),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              child: Text(
-                "Tổng khoảng cách: ${pathDistance!.toStringAsFixed(2)} mét",
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
+            child: Text(
+              "Tổng khoảng cách: ${pathDistance!.toStringAsFixed(2)} mét",
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
+          ),
         ),
     ],
   );
