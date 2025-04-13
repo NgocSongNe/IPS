@@ -26,85 +26,29 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   TextEditingController searchPlaceController = TextEditingController();
   int currentPageIndex = 0;
-  bool showLabel = true;
   List<CategoryModel> categories = [];
   List<MapModel> maps = [];
   bool _isDialogDismissed = false;
   PhotoViewComputedScale _photoViewScale = PhotoViewComputedScale.covered * 1;
   File? profileImage;
   late POISelectionScreen poiSelectionScreen;
-  LatLng userPositionCoordinates = LatLng(11.95722012378790, 108.44507513707570); // Tọa độ mặc định cho người dùng
-  String? selectedMarkerRP;
-      Timer? wifiScanTimer;
+
+  // Tọa độ mặc định cho người dùng
+  LatLng userPositionCoordinates = LatLng(11.957222760551929, 108.44508052756397);
+
   @override
   void initState() {
     super.initState();
-    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: userPositionCoordinates,context: context);
+    // Khởi tạo POISelectionScreen với tọa độ và context
+    poiSelectionScreen = POISelectionScreen(
+      userPositionCoordinates: userPositionCoordinates,
+      context: context,
+    );
     getCategories();
     getMaps();
-    scanAndSendWiFiData(); 
-
     WidgetsBinding.instance.addPostFrameCallback((_) => _showGuideDialog());
   }
-  Future<void> scanAndSendWiFiData() async {
-    try {
-      // Quét mạng Wi-Fi
-      List<WiFiAccessPoint> wifiList = await WifiScanner.scanWiFi();
-      
-      // Lấy các giá trị RSSI từ danh sách Wi-Fi
-      List<int> wifiData = wifiList.map((wifi) => wifi.level).toList();
 
-      // Gửi dữ liệu Wi-Fi lên server
-      final url = Uri.parse('http://192.168.99.33:8765/predict'); // URL server
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'rssi': wifiData}),
-      );
-
-      if (response.statusCode == 200) {
-        print("✅ Dữ liệu đã được gửi thành công: ${response.body}");
-
-        // Xử lý dữ liệu trả về từ server
-        final responseData = jsonDecode(response.body);
-
-        // Lấy thông tin từ dữ liệu trả về
-        String name = responseData['name'];
-        List coordinates = responseData['coordinates'];
-        int rp = responseData['rp'];
-
-        // Cập nhật vị trí người dùng từ dự đoán của model
-        setState(() {
-          userPositionCoordinates = LatLng(coordinates[1], coordinates[0]); // Tọa độ từ dữ liệu trả về
-          // Cập nhật lại marker người dùng với tọa độ mới
-          selectedMarkerRP = rp.toString();
-            print("Updated User Position: $userPositionCoordinates"); 
-        });
-print("User Position: $userPositionCoordinates");
-        // Di chuyển bản đồ đến vị trí người dùng
-        poiSelectionScreen.mapController.move(userPositionCoordinates, 18);
-      } else {
-        print("❌ Gửi dữ liệu thất bại: ${response.statusCode}");
-      }
-    } catch (e) {
-      print("❌ Lỗi khi quét và gửi dữ liệu Wi-Fi: $e");
-    }
-  }
-Future<void> startWifiTracking() async {
-  // Bắt đầu quét Wi-Fi mỗi 5 giây
-  wifiScanTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
-    // Quét Wi-Fi và gửi dữ liệu
-    await scanAndSendWiFiData();
-  });
-}
-
-// Hàm dừng quét Wi-Fi
-Future<void> stopWifiTracking() async {
-   if (wifiScanTimer != null && wifiScanTimer!.isActive) {
-    wifiScanTimer?.cancel(); // Hủy Timer để dừng quét
-    print("❌ Dừng quét Wi-Fi");
-  }
-}
   void getCategories() {
     categories = CategoryModel.getCategories();
   }
@@ -162,168 +106,61 @@ Future<void> stopWifiTracking() async {
     );
   }
 
+  Future<List<int>> getOrderedRSSI(List<String> macList) async {
+    List<WiFiAccessPoint> wifiList = await WifiScanner.scanWiFi();
+    Map<String, int> wifiMap = {
+      for (var ap in wifiList) ap.bssid.toUpperCase(): ap.level
+    };
+    List<int> orderedRSSI = macList.map((mac) {
+      return wifiMap[mac.toUpperCase()] ?? -100;
+    }).toList();
+    return orderedRSSI;
+  }
 
   Future<void> sendWiFiDataToServer() async {
-    final url =
-        Uri.parse('http://192.168.99.33:8765/predict'); // URL server Node.js
+    final url = Uri.parse('http://192.168.1.6:8765/predict');
+    final List<String> macList = [
+      // Thêm danh sách MAC thực tế của bạn, ví dụ:
+      "A0:23:B4:11:22:33",
+      "B0:12:FF:44:55:66",
+      "C0:DE:AD:BE:EF:00",
+      // Thêm các MAC khác nếu cần
+    ];
 
     try {
-      // Dữ liệu mẫu WiFi (dùng List thay vì Set)
-      final List<int> wifiData = [
-        -67,
-        -48,
-        -61,
-        -64,
-        -66,
-        -92,
-        -74,
-        -67,
-        -55,
-        -56,
-        -80,
-        -74,
-        -81,
-        -78,
-        -84,
-        -80,
-        -74,
-        -78,
-        -85,
-        -85,
-        -68,
-        -58,
-        -100,
-        -65,
-        -62,
-        -60,
-        -65,
-        -73,
-        -61,
-        -84,
-        -81,
-        -63,
-        -64,
-        -49,
-        -100,
-        -100,
-        -89,
-        -90,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -90,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100,
-        -100
-     
-      ];
-
-      // Gửi dữ liệu đến server
+      List<int> rssiData = await getOrderedRSSI(macList);
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'rssi': wifiData}),
+        body: jsonEncode({'rssi': rssiData}),
       );
 
-     if (response.statusCode == 200) {
-        print("✅ Dữ liệu đã được gửi thành công: ${response.body}");
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        String name = result['name'];
+        List coordinates = result['coordinates'];
+        int rp = result['rp'];
 
-        // Xử lý dữ liệu trả về từ server
-        final responseData = jsonDecode(response.body);
+        print("📍 Vị trí dự đoán: $name - RP $rp - Tọa độ $coordinates");
 
-        // Lấy thông tin từ dữ liệu trả về
-        String name = responseData['name'];
-        List coordinates = responseData['coordinates'];
-        int rp = responseData['rp'];
-
-        // Cập nhật vị trí người dùng từ dự đoán của model
+        // Cập nhật tọa độ người dùng
         setState(() {
-          userPositionCoordinates = LatLng(coordinates[1], coordinates[0]); // Tọa độ từ dữ liệu trả về
-          // Cập nhật lại marker người dùng với tọa độ mới
-          selectedMarkerRP = rp.toString();
+          userPositionCoordinates = LatLng(coordinates[1], coordinates[0]);
+          poiSelectionScreen = POISelectionScreen(
+            userPositionCoordinates: userPositionCoordinates,
+            context: context,
+          );
         });
-
-        // Di chuyển bản đồ đến vị trí người dùng
-        poiSelectionScreen.mapController.move(userPositionCoordinates, 30);
       } else {
-        print("❌ Failed to send data: ${response.statusCode}");
+        print("❌ Lỗi server: ${response.body}");
       }
     } catch (e) {
-      print("❌ Error sending data: $e");
+      print("❌ Gửi dữ liệu thất bại: $e");
     }
   }
-Container _categoriesMethod() {
-  return Container(
-    height: 50, // Đặt chiều cao cho container
-    child: SingleChildScrollView(  // Đảm bảo có thể cuộn ngang
-      scrollDirection: Axis.horizontal,  // Cuộn theo hướng ngang
-      child: Row(
-        children: List.generate(categories.length, (index) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
-            child: ElevatedButton.icon(
-              onPressed: () {
-                // Xử lý khi bấm vào category
-              },
-              icon: Icon(
-                categories[index].icons.icon,  // Lấy icon từ category
-                color: Colors.green,
-              ),
-              label: Text(
-                categories[index].name,
-                style: GoogleFonts.openSans(
-                  fontWeight: FontWeight.w400,
-                  fontSize: 14,
-                  color: Colors.black,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color.fromARGB(255, 255, 255, 255),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                minimumSize: Size(100, 40),
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              ),
-            ),
-          );
-        }),
-      ),
-    ),
-  );
-}
-
 
   @override
   Widget build(BuildContext context) {
-    List<CategoryModel> categories = CategoryModel.getCategories(); 
     return Scaffold(
       backgroundColor: Color(0xffFFEBCD),
       bottomNavigationBar: _bottomNavBar(),
@@ -332,10 +169,25 @@ Container _categoriesMethod() {
           Column(
             children: [
               _searchField(),
-              SizedBox(height: 5),
-            
-             _categoriesMethod(),
-              SizedBox(height: 10),
+              SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 15.0),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _categoryButton('Kệ sách', Icons.book),
+                      _categoryButton('Khu vực đọc', Icons.menu_book),
+                      _categoryButton('Phòng vệ sinh', Icons.people),
+                      _categoryButton('Căn tin', Icons.food_bank),
+                      _categoryButton('Phòng học', Icons.class_),
+                      _categoryButton('Phòng thí nghiệm', Icons.science),
+                      _categoryButton('Phòng máy tính', Icons.computer),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
               Expanded(
                 child: poiSelectionScreen.buildMapSection(context, () {
                   setState(() {});
@@ -350,48 +202,22 @@ Container _categoriesMethod() {
               children: [
                 FloatingActionButton(
                   heroTag: "location_button",
-                 onPressed: () async {
-                    List<WiFiAccessPoint> wifiList =
-                    await WifiScanner.scanWiFi();
-                    
-                    await sendWiFiDataToServer();
-
-                    String? imagePath;
-                    if (imagePath != null) {
-                      profileImage = File(imagePath);
-                    }
+                  onPressed: () {
+                    poiSelectionScreen.mapController.move(
+                        userPositionCoordinates, 18);
                   },
                   backgroundColor: Colors.yellow,
                   child: Icon(Icons.my_location, color: Colors.black),
                 ),
                 SizedBox(height: 10),
-                // FloatingActionButton(
-                //   onPressed: () async {
-                //     List<String> macList = [/* danh sách MAC cố định */];
-                //     List<int> rssiData = await getOrderedRSSI(macList);
-                //     await sendWiFiDataToServer(rssiData);
-                //   },
-                //   child: Icon(Icons.wifi),
-                // ),
-               
-                // Button để bắt đầu quét Wi-Fi
-FloatingActionButton(
-  heroTag: "wifi_tracking_button",
-  onPressed: () {
-    startWifiTracking();
-  },
-  backgroundColor: Colors.blue,
-  child: Icon(Icons.wifi, color: Colors.white),
-),
-FloatingActionButton(
-  heroTag: "stop_tracking_button",
-  onPressed: () {
-    stopWifiTracking();
-  },
-  backgroundColor: Colors.red,
-  child: Icon(Icons.wifi, color: Colors.white),
-),
-
+                FloatingActionButton(
+                  heroTag: "wifi_scan_button",
+                  onPressed: () async {
+                    await sendWiFiDataToServer();
+                  },
+                  backgroundColor: Colors.blue,
+                  child: Icon(Icons.wifi, color: Colors.white),
+                ),
               ],
             ),
           ),
@@ -417,7 +243,11 @@ FloatingActionButton(
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => POISelectionScreenPage(userPositionCoordinates: userPositionCoordinates)),
+            MaterialPageRoute(
+              builder: (context) => POISelectionScreenPage(
+                poiSelectionScreen: poiSelectionScreen,
+              ),
+            ),
           );
         },
         child: AbsorbPointer(
@@ -427,7 +257,7 @@ FloatingActionButton(
               border: InputBorder.none,
               hintText: '   Tìm kiếm địa điểm ...',
               hintStyle:
-                  GoogleFonts.openSans(color: Colors.grey[00], fontSize: 18),
+                  GoogleFonts.openSans(color: Colors.grey[600], fontSize: 18),
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -505,37 +335,31 @@ FloatingActionButton(
 }
 
 class POISelectionScreenPage extends StatefulWidget {
-  final LatLng userPositionCoordinates;  // Accept the user position coordinates
+  final POISelectionScreen poiSelectionScreen;
 
-  POISelectionScreenPage({required this.userPositionCoordinates,context});  // Constructor
+  const POISelectionScreenPage({Key? key, required this.poiSelectionScreen})
+      : super(key: key);
 
   @override
   _POISelectionScreenPageState createState() => _POISelectionScreenPageState();
 }
+
 class _POISelectionScreenPageState extends State<POISelectionScreenPage> {
-  late POISelectionScreen poiSelectionScreen;
-
-  @override
-  void initState() {
-    super.initState();
-    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: widget.userPositionCoordinates,context: context);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Chọn Địa Điểm")),
       body: Column(
         children: [
-          if (poiSelectionScreen.startPOI != null)
-            Text("Điểm bắt đầu: RP ${poiSelectionScreen.startPOI}",
+          if (widget.poiSelectionScreen.startPOI != null)
+            Text("Điểm bắt đầu: RP ${widget.poiSelectionScreen.startPOI}",
                 style: TextStyle(fontSize: 16)),
-          if (poiSelectionScreen.endPOI != null)
-            Text("Điểm kết thúc: RP ${poiSelectionScreen.endPOI}",
+          if (widget.poiSelectionScreen.endPOI != null)
+            Text("Điểm kết thúc: RP ${widget.poiSelectionScreen.endPOI}",
                 style: TextStyle(fontSize: 16)),
           Expanded(
-            child: poiSelectionScreen.buildMapSection(context, () {
-              setState(() {});  // Notify parent to update the state
+            child: widget.poiSelectionScreen.buildMapSection(context, () {
+              setState(() {});
             }),
           ),
         ],
