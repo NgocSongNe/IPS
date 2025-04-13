@@ -898,7 +898,7 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
     options: MapOptions(
       center: userPositionCoordinates,  // Updated coordinates
       zoom: currentZoom,
-      minZoom: 5.0,
+      minZoom: 15.0,
       maxZoom: 22.0,
       interactiveFlags: InteractiveFlag.all,
       onPositionChanged: (position, hasGesture) {
@@ -934,67 +934,64 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
       MarkerLayer(
         rotate: true,
         markers: [
-                ...poiList
-                    .map((poi) {
-                      if (poi['rp'] == userPositionRP)
-                        return null;
-                      final isSelected = poi['rp'] == selectedMarkerRP ||
-                          poi['rp'] == secondSelectedMarkerRP;
-            return Marker(
-              point: poi['coordinates'] as LatLng,
-                        width: isSelected ? 80.0 : 60.0,
-                        height: isSelected ? 80.0 : 60.0,
-              child: GestureDetector(
-                onTap: () {
-                  _onPOITap(poi['rp'] as String, context, setStateCallback);
-                  setStateCallback();  // Update state when POI is tapped
-                },
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-                      decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? Colors.red.withOpacity(0.7)
-                                      : Colors.white.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(4.0),
-                      ),
-                      child: Text(
-                        poi['name'] ?? "Unknown",
-                        style: TextStyle(
-                                    fontSize: isSelected ? 10 : 8,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                if (currentZoom >= 20) // Only show POIs if zoom level is high enough
+                  ...poiList.map((poi) {
+                    if (poi['rp'] == userPositionRP) return null;
+                    final isSelected = poi['rp'] == selectedMarkerRP || poi['rp'] == secondSelectedMarkerRP;
+                    return Marker(
+                      point: poi['coordinates'] as LatLng,
+                      width: isSelected ? 80.0 : 60.0,
+                      height: isSelected ? 80.0 : 60.0,
+                      child: GestureDetector(
+                        onTap: () {
+                          _onPOITap(poi['rp'] as String, context, setStateCallback);
+                          setStateCallback(); // Update state when POI is tapped
+                        },
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? Colors.red.withOpacity(0.7)
+                                    : Colors.white.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(4.0),
+                              ),
+                              child: Text(
+                                poi['name'] ?? "Unknown",
+                                style: TextStyle(
+                                  fontSize: isSelected ? 10 : 8,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
+                            isSelected
+                                ? Icon(
+                                    Icons.location_on,
+                                    color: Colors.red,
+                                    size: 30,
+                                  )
+                                : Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.red.withOpacity(0.6),
+                                      border: Border.all(
+                                        color: Colors.red,
+                                        width: 1,
+                                      ),
+                                    ),
+                                  ),
+                          ],
                         ),
                       ),
-                    ),
-                              isSelected
-                                  ? Icon(
-                      Icons.location_on,
-                                      color: Colors.red,
-                      size: 30,
-                                    )
-                                  : Container(
-                                      width: 10,
-                                      height: 10,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.red.withOpacity(0.6),
-                                        border: Border.all(
-                                          color: Colors.red,
-                                          width: 1,
-                                        ),
-                                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-                    })
-                    .where((marker) => marker != null)
-                    .cast<Marker>(),
-
+                    );
+                  })
+                  .where((marker) => marker != null)
+                  .cast<Marker>(),
           // USER POSITION marker
           Marker(
                   point: userPositionCoordinates,
