@@ -20,9 +20,9 @@ class POISelectionScreen {
   List<List<LatLng>> walls = [];
    List<List<LatLng>> hallways = [];
   List<LatLng> waypoints = [];
-  
-  final GeoJsonParser geoJsonParser = GeoJsonParser();
+    final GeoJsonParser geoJsonParser = GeoJsonParser();
 
+String userPositionRP = "userPosition";
   List<String> directions = [];
   List<double> segmentDistances = [];
 
@@ -255,8 +255,11 @@ class POISelectionScreen {
                   fillColor = Colors.blue.withOpacity(0.3);
                 } else if (endpoint == "/geojson/Wall") {
                   fillColor = Colors.grey.withOpacity(0.3);
+                  walls.add(points);
                 } else if (endpoint == "/geojson/Hallways") {
                   fillColor = Colors.green.withOpacity(0.3);
+                  hallways.add(points);
+                  waypoints.addAll(points);
                 } else {
                   fillColor = Colors.transparent;
                 }
@@ -346,7 +349,7 @@ class POISelectionScreen {
 
           poiList.add({
             "name": properties['Name'] ?? 'Unknown',
-            "rp": rp,
+            "rp": properties['RP'] ?? 'Unknown',
             "coordinates": LatLng(coordinates[1], coordinates[0]),
             "description": properties['Description'] ?? 'Không có mô tả',
             "images": images,
@@ -579,13 +582,7 @@ void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
       return;
     }
 
-    if (startPOI == rp) {
-      startPOI = null;
-      selectedMarkerRP = null;
-    } else if (endPOI == rp) {
-      endPOI = null;
-      secondSelectedMarkerRP = null;
-    } else if (startPOI == null) {
+    if (startPOI == null) {
       startPOI = rp;
       selectedMarkerRP = rp;
     } else if (endPOI == null && rp != startPOI) {
@@ -665,8 +662,8 @@ void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
                   const SizedBox(width: 10),
                   ElevatedButton.icon(
                     onPressed: () {
-                      startPOI = userPositionCoordinates.toString();
-                      selectedMarkerRP = userPositionCoordinates.toString();
+                      startPOI = userPositionRP;
+                      selectedMarkerRP = userPositionRP;
                       endPOI = rp;
                       secondSelectedMarkerRP = rp;
                       _drawRoute(context, setStateCallback);
@@ -770,7 +767,7 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
         markers: [
                 ...poiList
                     .map((poi) {
-                      if (poi['rp'] == userPositionCoordinates.toString()) 
+                      if (poi['rp'] == userPositionRP)
                         return null;
                       final isSelected = poi['rp'] == selectedMarkerRP ||
                           poi['rp'] == secondSelectedMarkerRP;
@@ -832,8 +829,8 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
           // USER POSITION marker
           Marker(
                   point: userPositionCoordinates,
-                  width: selectedMarkerRP == userPositionCoordinates ? 80.0 : 60.0,
-                  height: selectedMarkerRP == userPositionCoordinates ? 80.0 : 60.0,
+                  width: selectedMarkerRP == userPositionRP ? 80.0 : 60.0,
+                  height: selectedMarkerRP == userPositionRP ? 80.0 : 60.0,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -841,7 +838,7 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
                         padding:
                             EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                   decoration: BoxDecoration(
-                          color: selectedMarkerRP == userPositionCoordinates
+                           color: selectedMarkerRP == userPositionRP
                               ? Colors.green.withOpacity(0.7)
                               : Colors.white,
                     borderRadius: BorderRadius.circular(4.0),
@@ -850,7 +847,7 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
                     "User",  // Display "User"
                     style: TextStyle(
                             fontSize:
-                                selectedMarkerRP == userPositionCoordinates ? 12 : 10,
+                                selectedMarkerRP == userPositionRP ? 12 : 10,
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
                     ),
@@ -858,7 +855,7 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
                 ),
                 Icon(
                   Icons.person_pin_circle,
-                        color: selectedMarkerRP == userPositionCoordinates
+                        color: selectedMarkerRP == userPositionRP
                             ? Colors.red
                             : Colors.blue,
                         size: 32,
