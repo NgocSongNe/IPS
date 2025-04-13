@@ -404,7 +404,9 @@ String userPositionRP = "userPosition";
         for (var feature in poiJson['features']) {
           final properties = feature['properties'];
           final coordinates = feature['geometry']['coordinates'];
-
+          if (properties['Name'] == 'Cầu thang') {
+          continue; // Bỏ qua POI này
+        }
           // Lấy RP của POI
           String rp = properties['RP'] ?? 'unknown';
 
@@ -424,13 +426,7 @@ String userPositionRP = "userPosition";
         }
 
         // Thêm vị trí của User vào poiList để có thể sử dụng trong graph
-        poiList.add({
-          "name": "User Position",
-          "rp": userPositionCoordinates.toString(),
-          "coordinates": userPositionCoordinates,
-          "description": "Vị trí hiện tại của bạn",
-          "images": <String>[],
-        });
+        
 
         for (int i = 0; i < waypoints.length; i++) {
           poiList.add({
@@ -442,13 +438,7 @@ String userPositionRP = "userPosition";
           });
         }
 
-        poiList.add({
-          "name": "User Position",
-          "rp": userPositionRP,
-          "coordinates": userPositionCoordinates,
-          "description": "Vị trí hiện tại của bạn",
-          "images": <String>[],
-        });
+     
 
         graph = _generateGraph();
         print("Graph generated: $graph");
@@ -744,7 +734,8 @@ void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
       print("Không tìm thấy POI với RP: $rp");
       return;
     }
-
+selectedMarkerRP = rp; // Đặt POI vừa được tap là POI được chọn
+  setStateCallback(); 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -874,6 +865,29 @@ void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
 
     setStateCallback();
   }
+void _onStartButtonPressed(BuildContext context, VoidCallback setStateCallback) {
+  print("Bắt đầu button pressed: Setting startPOI to $userPositionRP, endPOI to $selectedMarkerRP");
+  startPOI = userPositionRP;
+  endPOI = selectedMarkerRP; // Chọn POI kết thúc
+
+  // Cập nhật màu sắc của marker sau khi bắt đầu chỉ đường
+  selectedMarkerRP = selectedMarkerRP;  // Đổi thành màu đỏ khi bắt đầu
+
+  _drawRouteCD(context, setStateCallback, showDirections: true);
+  setStateCallback(); // Cập nhật lại giao diện
+}
+
+void _onDirectionsButtonPressed(BuildContext context, VoidCallback setStateCallback) {
+  print("Chỉ đường button pressed: Setting startPOI to $userPositionRP, endPOI to $selectedMarkerRP");
+  startPOI = userPositionRP;
+  endPOI = selectedMarkerRP;
+
+  // Cập nhật màu sắc của marker khi chỉ đường
+  selectedMarkerRP = selectedMarkerRP;  // Đổi thành màu đỏ khi chỉ đường
+
+  _drawRoute(context, setStateCallback, showDirections: true);
+  setStateCallback(); // Cập nhật lại giao diện
+}
 
 
 Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
@@ -942,7 +956,7 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
                       padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                       decoration: BoxDecoration(
                                   color: isSelected
-                                      ? Colors.green.withOpacity(0.7)
+                                      ? Colors.red.withOpacity(0.7)
                                       : Colors.white.withOpacity(0.7),
                         borderRadius: BorderRadius.circular(4.0),
                       ),
