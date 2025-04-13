@@ -30,4 +30,3 @@ Future<void> checkPermissions() async {
     openAppSettings();  // Mở cài đặt ứng dụng để người dùng cấp quyền
   }
 }
-
