@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/Location.dart';
 import 'package:flutter_application_1/account.dart';
@@ -16,7 +15,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:flutter_application_1/ultils/permission.dart';
+
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 
@@ -44,7 +43,6 @@ class _HomePageState extends State<HomePage> {
     getCategories();
     getMaps();
     scanAndSendWiFiData(); 
-    requestPermissions();
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _showGuideDialog());
   }
@@ -57,7 +55,7 @@ class _HomePageState extends State<HomePage> {
       List<int> wifiData = wifiList.map((wifi) => wifi.level).toList();
 
       // Gửi dữ liệu Wi-Fi lên server
-      final url = Uri.parse('http://192.168.0.100:8765/predict'); // URL server
+      final url = Uri.parse('http://192.168.99.33:8765/predict'); // URL server
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
@@ -163,95 +161,124 @@ Future<void> stopWifiTracking() async {
       },
     );
   }
-Future<void> sendWiFiDataToServer() async {
-  final url = Uri.parse('http://192.168.0.100:8765/predict'); // URL server Node.js
 
-  try {
-    // Quét các mạng Wi-Fi xung quanh
-    var wifiNetworks = await WifiScanner.scanWiFi();
-    
-    // Kiểm tra xem có mạng Wi-Fi nào được quét không
-    if (wifiNetworks.isEmpty) {
-      print("❌ Không tìm thấy mạng Wi-Fi");
-      return; // Nếu không có mạng, dừng hàm
-    }
 
-    // Danh sách các địa chỉ MAC (số lượng MAC cố định)
-    List<String> macAddresses = [
-      "88:dc:97:12:62:cf", "8e:dc:97:12:65:63", "8e:dc:97:12:65:21", "8e:dc:97:12:65:64", "8e:dc:97:12:65:2b",
-            "88:dc:97:12:64:c4", "88:dc:97:12:62:c6", "8e:dc:97:12:62:cf", "b4:5d:50:d7:e9:51", "b4:5d:50:d7:e9:50",
-            "88:dc:97:12:62:c7", "8e:dc:97:12:65:22", "88:dc:97:12:65:57", "88:dc:97:12:64:82", "88:dc:97:12:64:83",
-            "8e:dc:97:12:62:c7", "8e:dc:97:12:62:c6", "8e:dc:97:12:64:82", "8e:dc:97:12:64:83", "88:dc:97:12:65:58",
-            "88:dc:97:12:65:2b", "88:dc:97:12:65:2a", "8e:dc:97:12:64:c4", "88:dc:97:12:62:d0", "b4:5d:50:d7:e9:40",
-            "8e:dc:97:12:65:2a", "8e:dc:97:12:62:d0", "88:dc:97:12:65:22", "88:dc:97:12:65:21", "8e:dc:97:12:65:58",
-            "8e:dc:97:12:65:57", "b4:5d:50:d7:e9:41", "88:dc:97:12:65:64", "88:dc:97:12:65:63", "88:dc:97:12:62:cc",
-            "8e:dc:97:12:62:cc", "88:dc:97:12:65:54", "8e:dc:97:12:65:54", "88:dc:97:12:65:55", "8e:dc:97:12:65:55",
-            "88:dc:97:12:62:ff", "8e:dc:97:12:62:ff", "68:ff:7b:d4:f1:cf", "88:dc:97:12:64:c5", "8e:dc:97:12:64:c5",
-            "8e:dc:97:12:62:cd", "88:dc:97:12:62:cd", "54:af:97:6b:ba:ce", "94:b4:0f:e3:1d:40", "94:b4:0f:e3:1d:41",
-            "40:e3:d6:cd:2d:21", "40:e3:d6:cd:2d:20", "94:b4:0f:e3:1d:51", "68:ff:7b:d4:f1:ce", "88:dc:97:12:63:00",
-            "40:e3:d6:cd:2d:31", "40:e3:d6:cd:2d:30", "8e:dc:97:12:63:00", "88:dc:97:12:64:4c", "8e:dc:97:12:5f:c9",
-            "18:64:72:55:12:90", "18:64:72:55:12:91", "94:b4:0f:e2:d0:b0", "8e:dc:97:12:64:4c", "94:b4:0f:e3:05:51",
-            "94:b4:0f:e3:1d:50", "94:b4:0f:e3:05:40", "18:64:72:55:12:81", "8e:dc:97:12:5f:cc", "18:64:72:55:12:80",
-            "94:b4:0f:e2:97:71", "94:b4:0f:e2:97:70"
-    ];
+  Future<void> sendWiFiDataToServer() async {
+    final url =
+        Uri.parse('http://192.168.99.33:8765/predict'); // URL server Node.js
 
-    // Lấy số lượng MAC cần quét (số lượng RSSI bạn cần)
-    int requiredCount = macAddresses.length;
+    try {
+      // Dữ liệu mẫu WiFi (dùng List thay vì Set)
+      final List<int> wifiData = [
+        -67,
+        -48,
+        -61,
+        -64,
+        -66,
+        -92,
+        -74,
+        -67,
+        -55,
+        -56,
+        -80,
+        -74,
+        -81,
+        -78,
+        -84,
+        -80,
+        -74,
+        -78,
+        -85,
+        -85,
+        -68,
+        -58,
+        -100,
+        -65,
+        -62,
+        -60,
+        -65,
+        -73,
+        -61,
+        -84,
+        -81,
+        -63,
+        -64,
+        -49,
+        -100,
+        -100,
+        -89,
+        -90,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -90,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100,
+        -100
+     
+      ];
 
-    // Nếu số mạng Wi-Fi quét được ít hơn số lượng MAC yêu cầu, sử dụng -100 cho những vị trí còn thiếu
-    List<int> wifiData = [];
-wifiData.clear();
-    for (int i = 0; i < requiredCount; i++) {
-      if (i < wifiNetworks.length) {
-        wifiData.add(wifiNetworks[i].level); // Lấy giá trị RSSI của mỗi mạng Wi-Fi
+      // Gửi dữ liệu đến server
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'rssi': wifiData}),
+      );
+
+     if (response.statusCode == 200) {
+        print("✅ Dữ liệu đã được gửi thành công: ${response.body}");
+
+        // Xử lý dữ liệu trả về từ server
+        final responseData = jsonDecode(response.body);
+
+        // Lấy thông tin từ dữ liệu trả về
+        String name = responseData['name'];
+        List coordinates = responseData['coordinates'];
+        int rp = responseData['rp'];
+
+        // Cập nhật vị trí người dùng từ dự đoán của model
+        setState(() {
+          userPositionCoordinates = LatLng(coordinates[1], coordinates[0]); // Tọa độ từ dữ liệu trả về
+          // Cập nhật lại marker người dùng với tọa độ mới
+          selectedMarkerRP = rp.toString();
+        });
+
+        // Di chuyển bản đồ đến vị trí người dùng
+        poiSelectionScreen.mapController.move(userPositionCoordinates, 30);
       } else {
-        wifiData.add(-100); // Nếu không đủ mạng, gán -100
+        print("❌ Failed to send data: ${response.statusCode}");
       }
+    } catch (e) {
+      print("❌ Error sending data: $e");
     }
-
-    // In ra mảng wifiData để kiểm tra các giá trị RSSI quét được
-    print("Quét được dữ liệu RSSI: $wifiData");
-
-    // Định dạng dữ liệu RSSI theo yêu cầu của bạn
-    Map<String, dynamic> dataToSend = {
-      'rssi': wifiData,  // Mảng các giá trị RSSI
-    };
-
-    // Gửi dữ liệu đến server
-    var response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(dataToSend), // Gửi dữ liệu RSSI dưới dạng JSON
-    );
-    
-    if (response.statusCode == 200) {
-      print("✅ Dữ liệu đã được gửi thành công: ${response.body}");
-      
-      // Xử lý dữ liệu trả về từ server
-      var responseData = jsonDecode(response.body);
-      String name = responseData['name'];
-      List coordinates = responseData['coordinates'];
-      int rp = responseData['rp'];
-
-      // Cập nhật vị trí người dùng từ dự đoán của model
-      setState(() {
-        userPositionCoordinates = LatLng(coordinates[1], coordinates[0]); // Tọa độ từ dữ liệu trả về
-        selectedMarkerRP = rp.toString(); // Cập nhật lại marker người dùng với tọa độ mới
-      });
-
-      // Di chuyển bản đồ đến vị trí người dùng
-      poiSelectionScreen.mapController.move(userPositionCoordinates, 30);
-    } else {
-      print("❌ Gửi dữ liệu thất bại: ${response.statusCode}");
-    }
-  } catch (e) {
-    print("❌ Lỗi khi quét và gửi dữ liệu Wi-Fi: $e");
   }
-}
-
-
-
-
 Container _categoriesMethod() {
   return Container(
     height: 50, // Đặt chiều cao cho container
@@ -297,7 +324,6 @@ Container _categoriesMethod() {
   @override
   Widget build(BuildContext context) {
     List<CategoryModel> categories = CategoryModel.getCategories(); 
-     List<WiFiAccessPoint> wifiList = [];
     return Scaffold(
       backgroundColor: Color(0xffFFEBCD),
       bottomNavigationBar: _bottomNavBar(),
@@ -325,17 +351,10 @@ Container _categoriesMethod() {
                 FloatingActionButton(
                   heroTag: "location_button",
                  onPressed: () async {
-                    setState(() async {
-                      
-                      wifiList =
+                    List<WiFiAccessPoint> wifiList =
                     await WifiScanner.scanWiFi();
-                    if(kDebugMode){
-                      for(var wifi in wifiList) {
-                        print("SSID: ${wifi.ssid}, RSSI: ${wifi.level}");
-                      }
-                    }
+                    
                     await sendWiFiDataToServer();
-                    });
 
                     String? imagePath;
                     if (imagePath != null) {
