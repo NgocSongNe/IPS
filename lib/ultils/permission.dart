@@ -25,7 +25,9 @@ Future<void> requestPermissions() async {
  
 }
 Future<void> checkPermissions() async {
-  if (await Permission.location.isPermanentlyDenied) {
-    openAppSettings();
+  if (await Permission.locationWhenInUse.isPermanentlyDenied ||
+      await Permission.locationAlways.isPermanentlyDenied) {
+    openAppSettings();  // Mở cài đặt ứng dụng để người dùng cấp quyền
   }
 }
+

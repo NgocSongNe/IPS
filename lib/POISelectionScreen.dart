@@ -120,7 +120,7 @@ String userPositionRP = "userPosition";
       }
     }
 
-    // Đảm bảo hướng dẫn cuối cùng là "Đến đích"192.168.1.6
+    // Đảm bảo hướng dẫn cuối cùng là "Đến đích"192.168.0.100
     if (directions.isNotEmpty && directions.last != "Đi thẳng đến đích") {
       directions.add("Đi thẳng đến đích");
       if (selectedRoute.length > 1) {
@@ -208,7 +208,7 @@ String userPositionRP = "userPosition";
     for (String endpoint in geoJsonEndpoints) {
       try {
         final response =
-            await http.get(Uri.parse("http://192.168.1.6:8765$endpoint"));
+            await http.get(Uri.parse("http://192.168.0.100:8765$endpoint"));
         if (response.statusCode == 200) {
           final geoJson = jsonDecode(response.body);
           if (geoJson['features'] is List) {
@@ -309,7 +309,7 @@ String userPositionRP = "userPosition";
   Future<void> _loadWallsFromAPI() async {
     try {
       final response =
-          await http.get(Uri.parse("http://192.168.1.6:8765/geojson/Paths"));
+          await http.get(Uri.parse("http://192.168.0.100:8765/geojson/Paths"));
       if (response.statusCode == 200) {
         final pathsJson = json.decode(response.body);
         walls = (pathsJson['features'] as List).map<List<LatLng>>((feature) {
@@ -329,7 +329,7 @@ String userPositionRP = "userPosition";
   Future<void> _loadPOIData() async {
     try {
       final response =
-          await http.get(Uri.parse("http://192.168.1.6:8765/geojson/POI"));
+          await http.get(Uri.parse("http://192.168.0.100:8765/geojson/POI"));
       if (response.statusCode == 200) {
         final poiJson = json.decode(response.body);
 
