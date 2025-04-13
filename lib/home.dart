@@ -40,7 +40,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: userPositionCoordinates);
+    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: userPositionCoordinates,context: context);
     getCategories();
     getMaps();
     scanAndSendWiFiData(); 
@@ -508,7 +508,7 @@ FloatingActionButton(
 class POISelectionScreenPage extends StatefulWidget {
   final LatLng userPositionCoordinates;  // Accept the user position coordinates
 
-  POISelectionScreenPage({required this.userPositionCoordinates});  // Constructor
+  POISelectionScreenPage({required this.userPositionCoordinates,context});  // Constructor
 
   @override
   _POISelectionScreenPageState createState() => _POISelectionScreenPageState();
@@ -519,7 +519,7 @@ class _POISelectionScreenPageState extends State<POISelectionScreenPage> {
   @override
   void initState() {
     super.initState();
-    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: widget.userPositionCoordinates);
+    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: widget.userPositionCoordinates,context: context);
   }
 
   @override

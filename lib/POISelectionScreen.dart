@@ -17,9 +17,12 @@ class POISelectionScreen {
   List<LatLng> selectedRoute = [];
   late Map<String, List<Map<String, dynamic>>> graph;
   List<List<LatLng>> walls = [];
+  
   final GeoJsonParser geoJsonParser = GeoJsonParser();
 
-  POISelectionScreen({required this.userPositionCoordinates}) {
+
+
+  POISelectionScreen({required this.userPositionCoordinates, required this.context}) {
     _loadWallsFromAPI(); // Load walls from the Paths API
     _loadPOIData();
     loadGeoJson().then((_) {
@@ -27,8 +30,69 @@ class POISelectionScreen {
     });
   }
   List<String> directions = [];
+ 
   String? selectedMarkerRP; // Track the currently selected marker
   String? secondSelectedMarkerRP; // Track the second selected marker
+
+  final BuildContext context; // Thêm BuildContext để sử dụng DefaultAssetBundle
+
+  // Ánh xạ từ RP tới tên thư mục hình ảnh
+  final Map<String, String> rpToFolderMap = {
+    "1": "tv3_4",
+    "2": "cua_ra_vao",
+    "3": "hoi_truong_thu_vien",
+    "4": "cau_thang",
+    "5": "cau_thang",
+    "6": "cau_thang",
+    "7": "cau_thang",
+    "8": "khu_vuc_tu_hoc",
+    "9": "can_tin",
+    "10": "cau_thang",
+    "11": "cau_thang",
+    "12": "khu_vuc_tu_hoc",
+    "13": "khu_vuc_tu_hoc",
+    "14": "khu_vuc_tu_hoc",
+    "15": "khu_vuc_tu_hoc",
+    "16": "hanh_lang",
+    "17": "hanh_lang",
+    "18": "khu_vuc_tu_hoc",
+    "19": "cau_thang",
+    "20": "cau_thang",
+    "21": "cau_thang",
+    "22": "khu_vuc_doc",
+    "23": "khu_vuc_tu_hoc",
+    "24": "khu_vuc_tu_hoc",
+    "25": "khu_vuc_doc",
+    "26": "khu_vuc_doc",
+    "27": "khu_vuc_doc",
+    "28": "cau_thang",
+    "29": "cau_thang",
+    "30": "khu_vuc_doc",
+    "31": "khu_vuc_doc",
+    "32": "cau_thang",
+    "33": "cau_thang_tang_2",
+    "34": "cua_ra_vao",
+    "35": "khu_vuc_tu_hoc",
+    "36": "ban_thu_thu",
+    "37": "ban_thu_thu",
+    "38": "khu_vuc_tu_hoc",
+    "39": "phong_tap_chi",
+    "40": "cau_thang_tang_2",
+  };
+  Future<List<String>> _getImagesFromFolder(String folderName) async {
+    try {
+      final manifestContent =
+          await DefaultAssetBundle.of(context).loadString('AssetManifest.json');
+      final Map<String, dynamic> manifestMap = json.decode(manifestContent);
+      final imagePaths = manifestMap.keys
+          .where((String key) => key.startsWith('assets/images/$folderName/'))
+          .toList();
+      return imagePaths;
+    } catch (e) {
+      print("Error loading images for folder $folderName: $e");
+      return [];
+    }
+  }
 
   void _calculateDirections() {
     directions.clear();
@@ -240,16 +304,37 @@ class POISelectionScreen {
       if (response.statusCode == 200) {
         final poiJson = json.decode(response.body);
 
-        poiList = (poiJson['features'] as List).map((feature) {
+        poiList = [];
+        for (var feature in poiJson['features']) {
           final properties = feature['properties'];
           final coordinates = feature['geometry']['coordinates'];
-          return {
-            "name": properties['Name'] ?? 'Unknown',
-            "rp": properties['RP'] ?? 'Unknown',
-            "coordinates": LatLng(coordinates[1], coordinates[0]),
-          };
-        }).toList();
 
+          // Lấy RP của POI
+          String rp = properties['RP'] ?? 'unknown';
+
+          // Dựa vào RP để lấy tên thư mục từ ánh xạ
+          String folderName = rpToFolderMap[rp] ?? 'unknown';
+
+          // Lấy danh sách hình ảnh thực tế từ thư mục
+          List<String> images = await _getImagesFromFolder(folderName);
+
+          poiList.add({
+            "name": properties['Name'] ?? 'Unknown',
+            "rp": rp,
+            "coordinates": LatLng(coordinates[1], coordinates[0]),
+            "description": properties['Description'] ?? 'Không có mô tả',
+            "images": images,
+          });
+        }
+
+        // Thêm vị trí của User vào poiList để có thể sử dụng trong graph
+        poiList.add({
+          "name": "User Position",
+          "rp": userPositionCoordinates.toString(),
+          "coordinates": userPositionCoordinates,
+          "description": "Vị trí hiện tại của bạn",
+          "images": <String>[],
+        });
         graph = _generateGraph();
       } else {
         print("Failed to load POI data: ${response.statusCode}");
@@ -380,24 +465,181 @@ class POISelectionScreen {
     return earthRadius * c * 1000;
   }
 
-  void _drawRoute() {
+   void _drawRoute(BuildContext context, VoidCallback setStateCallback) {
     if (startPOI != null && endPOI != null) {
       selectedRoute = _findShortestPath(startPOI!, endPOI!);
+      if (selectedRoute.isNotEmpty) {
+        _calculateDirections();
+        _showDirections(context);
+        setStateCallback();
+      } else {
+        print("No route found between $startPOI and $endPOI");
+      }
     }
   }
 
-  void _onPOITap(String rp) {
-    if (startPOI == null) {
+void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
+    var poi = poiList.firstWhere(
+      (poi) => poi['rp'] == rp,
+      orElse: () => {
+        "name": "Không tìm thấy",
+        "description": "Không tìm thấy POI với RP: $rp",
+        "images": <String>[],
+      },
+    );
+
+    if (poi['name'] == "Không tìm thấy") {
+      print("Không tìm thấy POI với RP: $rp");
+      return;
+    }
+
+    if (startPOI == rp) {
+      startPOI = null;
+      selectedMarkerRP = null;
+    } else if (endPOI == rp) {
+      endPOI = null;
+      secondSelectedMarkerRP = null;
+    } else if (startPOI == null) {
       startPOI = rp;
+      selectedMarkerRP = rp;
     } else if (endPOI == null) {
       endPOI = rp;
-      _drawRoute();
+      secondSelectedMarkerRP = rp;
     } else {
       startPOI = rp;
       endPOI = null;
+      selectedMarkerRP = rp;
+      secondSelectedMarkerRP = null;
       selectedRoute = [];
+      directions.clear();
     }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.5,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    poi['name'],
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                poi['description'] ?? 'Không có mô tả',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      startPOI = rp;
+                      selectedMarkerRP = rp;
+                      if (endPOI != null && startPOI != endPOI) {
+                        _drawRoute(context, setStateCallback);
+                      }
+                      setStateCallback();
+                      Navigator.of(context).pop();
+                    },
+                    icon: const Icon(Icons.play_arrow, color: Colors.white),
+                    label: Text(
+                      "Bắt đầu",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      startPOI = userPositionCoordinates.toString();
+                      selectedMarkerRP = userPositionCoordinates.toString();
+                      endPOI = rp;
+                      secondSelectedMarkerRP = rp;
+                      _drawRoute(context, setStateCallback);
+                      Navigator.of(context).pop();
+                    },
+                    icon: const Icon(Icons.directions, color: Colors.white),
+                    label: Text(
+                      "Tìm đường",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: poi['images'] != null && (poi['images'] as List).isNotEmpty
+                    ? ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: (poi['images'] as List).length,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 10),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.asset(
+                                (poi['images'] as List)[index],
+                                width: 150,
+                                height: 100,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 150,
+                                    height: 100,
+                                    color: Colors.grey,
+                                    child: const Center(
+                                      child: Icon(Icons.error, color: Colors.white),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                    : const Center(child: Text("Không có hình ảnh")),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    setStateCallback();
   }
+
+
 Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
   return FlutterMap(
     mapController: mapController,
@@ -444,7 +686,7 @@ Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
               height: 80.0,
               child: GestureDetector(
                 onTap: () {
-                  _onPOITap(poi['rp'] as String);
+                  _onPOITap(poi['rp'] as String, context, setStateCallback);
                   setStateCallback();  // Update state when POI is tapped
                 },
                 child: Column(
