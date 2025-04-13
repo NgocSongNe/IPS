@@ -57,7 +57,7 @@ class _HomePageState extends State<HomePage> {
       List<int> wifiData = wifiList.map((wifi) => wifi.level).toList();
 
       // Gửi dữ liệu Wi-Fi lên server
-      final url = Uri.parse('http://192.168.0.100:8765/predict'); // URL server
+      final url = Uri.parse('https://trannguyenanhminh.click/predict'); // URL server
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
@@ -164,7 +164,7 @@ Future<void> stopWifiTracking() async {
     );
   }
 Future<void> sendWiFiDataToServer() async {
-  final url = Uri.parse('http://192.168.0.100:8765/predict'); // URL server Node.js
+  final url = Uri.parse('https://trannguyenanhminh.click/predict'); // URL server Node.js
 
   try {
     // Quét các mạng Wi-Fi xung quanh
