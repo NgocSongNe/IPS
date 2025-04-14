@@ -34,19 +34,36 @@ class _HomePageState extends State<HomePage> {
   PhotoViewComputedScale _photoViewScale = PhotoViewComputedScale.covered * 1;
   File? profileImage;
   late POISelectionScreen poiSelectionScreen;
-  LatLng userPositionCoordinates = LatLng(11.95722012378790, 108.44507513707570); // Tọa độ mặc định cho người dùng
+  LatLng userPositionCoordinates = LatLng(11.95722012378790, 108.44507513707570);
   String? selectedMarkerRP;
-      Timer? wifiScanTimer;
+  Timer? wifiScanTimer;
+  String? selectedCategory; // Thêm biến để lưu category được chọn
+
   @override
   void initState() {
     super.initState();
-    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: userPositionCoordinates,context: context);
+    poiSelectionScreen = POISelectionScreen(
+      userPositionCoordinates: userPositionCoordinates,
+      context: context,
+      selectedCategory: selectedCategory, // Truyền selectedCategory
+    );
     getCategories();
     getMaps();
-    scanAndSendWiFiData(); 
+    scanAndSendWiFiData();
     requestPermissions();
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _showGuideDialog());
+  }
+
+  // Cập nhật lại poiSelectionScreen khi selectedCategory thay đổi
+  void updatePOISelectionScreen() {
+    setState(() {
+      poiSelectionScreen = POISelectionScreen(
+        userPositionCoordinates: userPositionCoordinates,
+        context: context,
+        selectedCategory: selectedCategory,
+      );
+    });
   }
   Future<void> scanAndSendWiFiData() async {
     try {
@@ -253,45 +270,48 @@ wifiData.clear();
 
 
 Container _categoriesMethod() {
-  return Container(
-    height: 50, // Đặt chiều cao cho container
-    child: SingleChildScrollView(  // Đảm bảo có thể cuộn ngang
-      scrollDirection: Axis.horizontal,  // Cuộn theo hướng ngang
-      child: Row(
-        children: List.generate(categories.length, (index) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
-            child: ElevatedButton.icon(
-              onPressed: () {
-                // Xử lý khi bấm vào category
-              },
-              icon: Icon(
-                categories[index].icons.icon,  // Lấy icon từ category
-                color: Colors.green,
-              ),
-              label: Text(
-                categories[index].name,
-                style: GoogleFonts.openSans(
-                  fontWeight: FontWeight.w400,
-                  fontSize: 14,
-                  color: Colors.black,
+    return Container(
+      height: 50,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: List.generate(categories.length, (index) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    selectedCategory = categories[index].name; // Cập nhật category được chọn
+                    updatePOISelectionScreen(); // Cập nhật lại POISelectionScreen
+                  });
+                },
+                icon: Icon(
+                  categories[index].icons.icon,
+                  color: Colors.green,
+                ),
+                label: Text(
+                  categories[index].name,
+                  style: GoogleFonts.openSans(
+                    fontWeight: FontWeight.w400,
+                    fontSize: 14,
+                    color: Colors.black,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color.fromARGB(255, 255, 255, 255),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  minimumSize: Size(100, 40),
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 ),
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color.fromARGB(255, 255, 255, 255),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                minimumSize: Size(100, 40),
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              ),
-            ),
-          );
-        }),
+            );
+          }),
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
 
   @override
@@ -398,7 +418,7 @@ FloatingActionButton(
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => POISelectionScreenPage(userPositionCoordinates: userPositionCoordinates)),
+            MaterialPageRoute(builder: (context) => SuggestedPlacesScreen()),
           );
         },
         child: AbsorbPointer(
@@ -486,9 +506,10 @@ FloatingActionButton(
 }
 
 class POISelectionScreenPage extends StatefulWidget {
-  final LatLng userPositionCoordinates;  // Accept the user position coordinates
+  final LatLng userPositionCoordinates;
+  final String? selectedCategory; // Thêm selectedCategory
 
-  POISelectionScreenPage({required this.userPositionCoordinates,context});  // Constructor
+  POISelectionScreenPage({required this.userPositionCoordinates, this.selectedCategory, context});
 
   @override
   _POISelectionScreenPageState createState() => _POISelectionScreenPageState();
@@ -499,7 +520,11 @@ class _POISelectionScreenPageState extends State<POISelectionScreenPage> {
   @override
   void initState() {
     super.initState();
-    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: widget.userPositionCoordinates,context: context);
+    poiSelectionScreen = POISelectionScreen(
+      userPositionCoordinates: widget.userPositionCoordinates,
+      context: context,
+      selectedCategory: widget.selectedCategory, // Truyền selectedCategory
+    );
   }
 
   @override
@@ -516,7 +541,7 @@ class _POISelectionScreenPageState extends State<POISelectionScreenPage> {
                 style: TextStyle(fontSize: 16)),
           Expanded(
             child: poiSelectionScreen.buildMapSection(context, () {
-              setState(() {});  // Notify parent to update the state
+              setState(() {});
             }),
           ),
         ],
