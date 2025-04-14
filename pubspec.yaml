@@ -48,7 +48,8 @@ dependencies:
   iconsax_flutter: ^1.0.0
   geolocator: ^13.0.2
   photo_view: ^0.15.0
-  # tflite_flutter: ^0.11.0
+  flutter_tts: ^4.0.2
+  #tflite_flutter: ^0.11.0
 
 dev_dependencies:
   flutter_test:
@@ -85,7 +86,20 @@ flutter:
     - assets/geojson/Paths.geojson
     - assets/geojson/Stair.geojson
     - assets/model/wifi_mlp_model.tflite
+
     
+    - assets/images/tv3_4/
+    - assets/images/cua_ra_vao/
+    - assets/images/hoi_truong_thu_vien/
+    - assets/images/cau_thang/
+    - assets/images/khu_vuc_tu_hoc/
+    - assets/images/can_tin/
+    - assets/images/hanh_lang/
+    - assets/images/khu_vuc_doc/
+    - assets/images/cau_thang_tang_2/
+    - assets/images/ban_thu_thu/
+    - assets/images/phong_tap_chi/
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
