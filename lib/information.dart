@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/account.dart';
@@ -18,15 +19,92 @@ class _InformationPageState extends State<InformationPage> {
   int currentPageIndex = 1;
   List<Widget> postCards = [];
   List<CategoryModel> categories = [];
+
+  // Danh sách các thư mục chứa hình ảnh cho từng mục
+  final Map<String, String> folderMap = {
+    "TV3,4": "tv3_4",
+    "Cửa ra vào": "cua_ra_vao",
+    "Hội trường thư viện": "hoi_truong_thu_vien",
+    "Khu vực tự học": "khu_vuc_tu_hoc",
+    "Căn tin": "can_tin",
+    "Khu vực đọc": "khu_vuc_doc",
+    "Cầu thang tầng 2": "cau_thang_tang_2",
+    "Bàn thủ thư": "ban_thu_thu",
+    "Phòng tạp chí": "phong_tap_chi",
+  };
+
   @override
   void initState() {
     super.initState();
-     getCategories();
-    // Initialize with some post cards (mô phỏng)
-    postCards = List.generate(3, (index) => _buildPostCard());
+    getCategories();
+    // Khởi tạo các bài đăng với caption và hình ảnh từ các thư mục tương ứng
+    postCards = [
+      _buildPostCard(
+        caption:
+            'Phòng máy tính TV3 và TV4 với hệ thống trang thiết bị hiện đại, phòng học được trang bị các bộ máy tính được kết nối Internet chất lượng cao. Phòng học đáp ứng được các nhu cầu về học tập và làm việc một cách ổn định và mượt mà.',
+        folderName: 'tv3_4',
+      ),
+      _buildPostCard(
+        caption:
+            'Cửa ra vào thư viện với thiết kế hiện đại, thuận tiện cho việc di chuyển và đảm bảo an ninh.',
+        folderName: 'cua_ra_vao',
+      ),
+      _buildPostCard(
+        caption:
+            'Hội trường thư viện là không gian rộng lớn, hiện đại, phù hợp cho các buổi hội thảo và sự kiện quan trọng.',
+        folderName: 'hoi_truong_thu_vien',
+      ),
+      _buildPostCard(
+        caption:
+            'Khu vực tự học với đầy đủ bàn ghế, ổ cắm điện và không gian yên tĩnh, lý tưởng cho việc học tập và nghiên cứu.',
+        folderName: 'khu_vuc_tu_hoc',
+      ),
+      _buildPostCard(
+        caption:
+            'Căn tin hiện đại, cung cấp nhiều loại đồ ăn và thức uống, đáp ứng nhu cầu của sinh viên và cán bộ.',
+        folderName: 'can_tin',
+      ),
+      _buildPostCard(
+        caption:
+            'Khu vực đọc với không gian yên tĩnh, cung cấp nhiều loại sách và tài liệu học tập.',
+        folderName: 'khu_vuc_doc',
+      ),
+      _buildPostCard(
+        caption:
+            'Cầu thang tầng 2 được thiết kế chắc chắn, thuận tiện cho việc di chuyển giữa các tầng.',
+        folderName: 'cau_thang_tang_2',
+      ),
+      _buildPostCard(
+        caption:
+            'Bàn thủ thư là nơi làm việc trung tâm của các thủ thư, hỗ trợ sinh viên và cán bộ trong việc tìm kiếm tài liệu.',
+        folderName: 'ban_thu_thu',
+      ),
+      _buildPostCard(
+        caption:
+            'Phòng tạp chí lưu trữ nhiều loại tạp chí và sách đa dạng thể loại, phục vụ nhu cầu nghiên cứu và học tập.',
+        folderName: 'phong_tap_chi',
+      ),
+    ];
   }
+
   void getCategories() {
     categories = CategoryModel.getCategories();
+  }
+
+  // Hàm lấy danh sách hình ảnh từ thư mục
+  Future<List<String>> _getImagesFromFolder(String folderName) async {
+    try {
+      final manifestContent =
+          await DefaultAssetBundle.of(context).loadString('AssetManifest.json');
+      final Map<String, dynamic> manifestMap = json.decode(manifestContent);
+      final imagePaths = manifestMap.keys
+          .where((String key) => key.startsWith('assets/images/$folderName/'))
+          .toList();
+      return imagePaths;
+    } catch (e) {
+      print("Error loading images for folder $folderName: $e");
+      return [];
+    }
   }
 
   void _showAddPostDialog() {
@@ -96,7 +174,8 @@ class _InformationPageState extends State<InformationPage> {
                       caption: captionController.text.isNotEmpty
                           ? captionController.text
                           : 'Không có caption',
-                      imagePath: postImage?.path ?? '',
+                      folderName: '',
+                      customImagePath: postImage?.path,
                     ));
                   });
                   Navigator.pop(dialogContext);
@@ -189,43 +268,43 @@ class _InformationPageState extends State<InformationPage> {
       ),
     );
   }
-Container _categoriesMethod() {
-  return Container(
-    height: 50, // Đặt chiều cao cho container
-    child: SingleChildScrollView(  // Đảm bảo có thể cuộn ngang
-      scrollDirection: Axis.horizontal,  // Cuộn theo hướng ngang
-      child: Row(
-        children: List.generate(categories.length, (index) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
-            child: ElevatedButton.icon(
-              onPressed: () {
-                // Xử lý khi bấm vào category
-              },
-              icon: categories[index].icons,
-              label: Text(
-                categories[index].name,
-                style: GoogleFonts.openSans(
-                  fontWeight: FontWeight.w400,
-                  fontSize: 14,
-                  color: Colors.black,
+
+  Container _categoriesMethod() {
+    return Container(
+      height: 50,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: List.generate(categories.length, (index) {
+            return Padding(
+              padding:
+                  const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
+              child: ElevatedButton.icon(
+                onPressed: () {},
+                icon: categories[index].icons,
+                label: Text(
+                  categories[index].name,
+                  style: GoogleFonts.openSans(
+                    fontWeight: FontWeight.w400,
+                    fontSize: 14,
+                    color: Colors.black,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color.fromARGB(255, 255, 255, 255),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  minimumSize: Size(100, 40),
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 ),
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color.fromARGB(255, 255, 255, 255),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                minimumSize: Size(100, 40),
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              ),
-            ),
-          );
-        }),
+            );
+          }),
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildPostCards() {
     return Column(
@@ -233,9 +312,11 @@ Container _categoriesMethod() {
     );
   }
 
-  Widget _buildPostCard(
-      {String caption = 'Mô phỏng nội dung',
-      String imagePath = '../assets/new_year_banner.jpg'}) {
+  Widget _buildPostCard({
+    String caption = 'Mô phỏng nội dung',
+    String folderName = '',
+    String? customImagePath,
+  }) {
     return Card(
       margin: const EdgeInsets.all(12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -253,29 +334,193 @@ Container _categoriesMethod() {
             subtitle: const Text('28 tháng 1 lúc 05:00'),
           ),
           Padding(
-            padding: const EdgeInsets.all(10.0),
+            padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 10.0),
             child: Text(
               caption,
               style: GoogleFonts.openSans(fontSize: 14),
             ),
           ),
-          if (imagePath.isNotEmpty)
-            ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(bottom: Radius.circular(10)),
-              child: imagePath.contains('assets')
-                  ? Image.asset(
-                      imagePath,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                    )
-                  : Image.file(
-                      File(imagePath),
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                    ),
+          if (customImagePath != null && customImagePath.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.all(Radius.circular(10)),
+                child: Image.file(
+                  File(customImagePath),
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: 200,
+                ),
+              ),
+            )
+          else if (folderName.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
+              child: FutureBuilder<List<String>>(
+                future: _getImagesFromFolder(folderName),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Center(child: Text("Không có hình ảnh"));
+                  } else {
+                    final images = snapshot.data!;
+                    return _buildImageCollage(images);
+                  }
+                },
+              ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildImageCollage(List<String> images) {
+    // Định nghĩa chiều cao và chiều rộng cố định cho toàn bộ khối hình ảnh
+    final double collageWidth = MediaQuery.of(context).size.width - 32; // Trừ padding trái/phải (16 + 16)
+    const double collageHeight = 200;
+    const double gap = 2.0; // Khoảng cách giữa các hình ảnh (đường viền trắng)
+
+    // Hàm tạo widget hình ảnh
+    Widget buildImage(String imagePath, {required double width, required double height}) {
+      return Image.asset(
+        imagePath,
+        width: width,
+        height: height,
+        fit: BoxFit.cover, // Cắt hình ảnh để lấp đầy toàn bộ không gian
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: width,
+            height: height,
+            color: Colors.grey,
+            child: const Center(
+              child: Icon(Icons.error, color: Colors.white),
+            ),
+          );
+        },
+      );
+    }
+
+    // Bọc toàn bộ khối hình ảnh trong ClipRRect để bo tròn viền
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(5),
+      child: Container(
+        width: collageWidth,
+        height: collageHeight,
+        color: Colors.white, // Màu nền trắng để tạo đường viền trắng giữa các hình ảnh
+        // Nếu chỉ có 1 hình ảnh
+        child: images.length == 1
+            ? buildImage(
+                images[0],
+                width: collageWidth,
+                height: collageHeight,
+              )
+            // Nếu có 2 hình ảnh
+            : images.length == 2
+                ? Row(
+                    mainAxisSize: MainAxisSize.max,
+                    children: [
+                      buildImage(
+                        images[0],
+                        width: (collageWidth - gap) / 2,
+                        height: collageHeight,
+                      ),
+                      SizedBox(width: gap), // Đường viền trắng
+                      buildImage(
+                        images[1],
+                        width: (collageWidth - gap) / 2,
+                        height: collageHeight,
+                      ),
+                    ],
+                  )
+                // Nếu có 3 hình ảnh
+                : images.length == 3
+                    ? Row(
+                        mainAxisSize: MainAxisSize.max,
+                        children: [
+                          buildImage(
+                            images[0],
+                            width: (collageWidth - gap) / 2,
+                            height: collageHeight,
+                          ),
+                          SizedBox(width: gap), // Đường viền trắng
+                          Column(
+                            mainAxisSize: MainAxisSize.max,
+                            children: [
+                              buildImage(
+                                images[1],
+                                width: (collageWidth - gap) / 2,
+                                height: (collageHeight - gap) / 2,
+                              ),
+                              SizedBox(height: gap), // Đường viền trắng
+                              buildImage(
+                                images[2],
+                                width: (collageWidth - gap) / 2,
+                                height: (collageHeight - gap) / 2,
+                              ),
+                            ],
+                          ),
+                        ],
+                      )
+                    // Nếu có 4 hình ảnh trở lên
+                    : Row(
+                        mainAxisSize: MainAxisSize.max,
+                        children: [
+                          Column(
+                            mainAxisSize: MainAxisSize.max,
+                            children: [
+                              buildImage(
+                                images[0],
+                                width: (collageWidth - gap) / 2,
+                                height: (collageHeight - gap) / 2,
+                              ),
+                              SizedBox(height: gap), // Đường viền trắng
+                              buildImage(
+                                images[1],
+                                width: (collageWidth - gap) / 2,
+                                height: (collageHeight - gap) / 2,
+                              ),
+                            ],
+                          ),
+                          SizedBox(width: gap), // Đường viền trắng
+                          Column(
+                            mainAxisSize: MainAxisSize.max,
+                            children: [
+                              buildImage(
+                                images[2],
+                                width: (collageWidth - gap) / 2,
+                                height: (collageHeight - gap) / 2,
+                              ),
+                              SizedBox(height: gap), // Đường viền trắng
+                              Stack(
+                                children: [
+                                  buildImage(
+                                    images[3],
+                                    width: (collageWidth - gap) / 2,
+                                    height: (collageHeight - gap) / 2,
+                                  ),
+                                  if (images.length > 4)
+                                    Positioned.fill(
+                                      child: Container(
+                                        color: Colors.black.withOpacity(0.5),
+                                        child: Center(
+                                          child: Text(
+                                            '+${images.length - 4}',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
       ),
     );
   }
