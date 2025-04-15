@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_tts/flutter_tts.dart';
 
+
 class POISelectionScreen {
   final MapController mapController = MapController();
   double currentZoom = 20.0;
@@ -960,12 +961,15 @@ class POISelectionScreen {
                   const SizedBox(width: 10),
                   ElevatedButton.icon(
                     onPressed: () {
-                      // Điều hướng đến màn hình InformationPage
                       Navigator.of(context).pop(); // Đóng bottom sheet
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (context) => InformationPage()),
+                          builder: (context) => InformationPage(
+                            poiName: poi[
+                                'name'], // Truyền tên địa điểm (poi['name']) vào InformationPage
+                          ),
+                        ),
                       );
                     },
                     icon: const Icon(Icons.info, color: Colors.white),
@@ -974,7 +978,7 @@ class POISelectionScreen {
                       style: TextStyle(color: Colors.white),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.yellow[700], // Màu vàng
+                      backgroundColor: Colors.yellow[700],
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -1022,7 +1026,6 @@ class POISelectionScreen {
         );
       },
     );
-
     setStateCallback();
   }
 

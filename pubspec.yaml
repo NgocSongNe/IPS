@@ -49,6 +49,7 @@ dependencies:
   geolocator: ^13.0.2
   photo_view: ^0.15.0
   flutter_tts: ^4.0.2
+  flutter_compass: ^0.8.0
   #tflite_flutter: ^0.11.0
 
 dev_dependencies:
@@ -87,7 +88,6 @@ flutter:
     - assets/geojson/Stair.geojson
     - assets/model/wifi_mlp_model.tflite
 
-    
     - assets/images/tv3_4/
     - assets/images/cua_ra_vao/
     - assets/images/hoi_truong_thu_vien/
