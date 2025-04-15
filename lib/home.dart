@@ -398,7 +398,7 @@ FloatingActionButton(
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => POISelectionScreenPage(userPositionCoordinates: userPositionCoordinates)),
+            MaterialPageRoute(builder: (context) => SuggestedPlacesScreen()),
           );
         },
         child: AbsorbPointer(

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/information.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_geojson/flutter_map_geojson.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'dart:math';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -17,32 +17,21 @@ class POISelectionScreen {
   double? pathDistance;
   List<Map<String, dynamic>> poiList = [];
   List<LatLng> selectedRoute = [];
+  List<LatLng> originalRoute = [];
   late Map<String, List<Map<String, dynamic>>> graph;
   List<List<LatLng>> walls = [];
-   List<List<LatLng>> hallways = [];
+  List<List<LatLng>> hallways = [];
   List<LatLng> waypoints = [];
-    final GeoJsonParser geoJsonParser = GeoJsonParser();
+  final GeoJsonParser geoJsonParser = GeoJsonParser();
 
-String userPositionRP = "userPosition";
+  String userPositionRP = "userPosition";
   List<String> directions = [];
   List<double> segmentDistances = [];
 
-
-  POISelectionScreen({required this.userPositionCoordinates, required this.context}) {
-    _loadWallsFromAPI(); // Load walls from the Paths API
-    _loadPOIData();
-    loadGeoJson().then((_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _focusOnPOIs());
-    });
-    _initTts();
-  }
-
- 
-  String? selectedMarkerRP; // Track the currently selected marker
-  String? secondSelectedMarkerRP; // Track the second selected marker
+  String? selectedMarkerRP;
+  String? secondSelectedMarkerRP;
 
   final BuildContext context;
-
   final FlutterTts _flutterTts = FlutterTts();
 
   final Map<String, String> rpToFolderMap = {
@@ -88,6 +77,14 @@ String userPositionRP = "userPosition";
     "40": "cau_thang_tang_2",
   };
 
+  POISelectionScreen({required this.userPositionCoordinates, required this.context}) {
+    _loadWallsFromAPI();
+    _loadPOIData();
+    loadGeoJson().then((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _focusOnPOIs());
+    });
+    _initTts();
+  }
 
   Future<void> _initTts() async {
     await _flutterTts.setLanguage("vi-VN");
@@ -124,35 +121,78 @@ String userPositionRP = "userPosition";
     }
   }
 
+  // Hàm mới để lưu trữ thông tin mô tả của các POI
+  Map<String, String> getPOIDescriptions() {
+    return {
+      "1": "Phòng máy tính TV3 và TV4.",
+      "2": "Cửa ra vào thư viện",
+      "3": "Phòng Hội trường thư viện, không gian rộng lớn, hiện đại.",
+      "4": "Cầu thang di chuyển.",
+      "5": "Cầu thang di chuyển.",
+      "6": "Cầu thang di chuyển.",
+      "7": "Cầu thang di chuyển.",
+      "8": "Khu vực có đầy đủ bàn ghế, ổ cắm điện, không gian yên tĩnh.",
+      "9": "Căn tin hiện đại, cung cấp nhiều loại mặt hàng.",
+      "10": "Cầu thang di chuyển.",
+      "11": "Cầu thang di chuyển.",
+      "12": "Khu vực có đầy đủ bàn ghế, ổ cắm điện, không gian yên tĩnh.",
+      "13": "Khu vực có đầy đủ bàn ghế, ổ cắm điện, không gian yên tĩnh.",
+      "14": "Khu vực có đầy đủ bàn ghế, ổ cắm điện, không gian yên tĩnh.",
+      "15": "Khu vực có đầy đủ bàn ghế, ổ cắm điện, không gian yên tĩnh.",
+      // "16": "Hành lang di chuyển giữa các khu vực.",
+      // "17": "Hành lang di chuyển giữa các khu vực.",
+      "18": "Khu vực có đầy đủ bàn ghế, ổ cắm điện, không gian yên tĩnh.",
+      "19": "Cầu thang di chuyển.",
+      "20": "Cầu thang di chuyển.",
+      "21": "Cầu thang di chuyển.",
+      "22": "Khu vực cung cấp các thể loại sách, môi trường yên tĩnh.",
+      "23": "Khu vực có đầy đủ bàn ghế, ổ cắm điện, không gian yên tĩnh.",
+      "24": "Khu vực có đầy đủ bàn ghế, ổ cắm điện, không gian yên tĩnh.",
+      "25": "Khu vực cung cấp các thể loại sách, môi trường yên tĩnh.",
+      "26": "Khu vực cung cấp các thể loại sách, môi trường yên tĩnh.",
+      "27": "Khu vực cung cấp các thể loại sách, môi trường yên tĩnh.",
+      "28": "Cầu thang di chuyển.",
+      "29": "Cầu thang di chuyển.",
+      "30": "Khu vực cung cấp các thể loại sách, môi trường yên tĩnh.",
+      "31": "Khu vực cung cấp các thể loại sách, môi trường yên tĩnh.",
+      "32": "Cầu thang di chuyển.",
+      "33": "Cầu thang dẫn lên tầng 2",
+      "34": "Cửa ra vào thư viện",
+      "35": "Khu vực có đầy đủ bàn ghế, ổ cắm điện, không gian yên tĩnh.",
+      "36": "Khu vực làm việc trung tâm của thủ thư.",
+      "37": "Khu vực làm việc trung tâm của thủ thư.",
+      "38": "Khu vực có đầy đủ bàn ghế, ổ cắm điện, không gian yên tĩnh.",
+      "39": "Phòng lưu trữ tạp chí và nhiều sách đa dạng thể loại.",
+      "40": "Cầu thang dẫn lên tầng 2",
+    };
+  }
+
   void _calculateDirections() {
     directions.clear();
     segmentDistances.clear();
-    if (selectedRoute.length < 2) {
-      print("Selected route has less than 2 points, cannot calculate directions.");
+    if (originalRoute.length < 2) {
+      print("Original route has less than 2 points, cannot calculate directions.");
       return;
     }
 
-    for (int i = 0; i < selectedRoute.length - 1; i++) {
-      double segmentDistance = _calculateDistance(selectedRoute[i], selectedRoute[i + 1]);
+    for (int i = 0; i < originalRoute.length - 1; i++) {
+      double segmentDistance = _calculateDistance(originalRoute[i], originalRoute[i + 1]);
       segmentDistances.add(segmentDistance);
 
-      if (i == 0 || selectedRoute.length < 3) {
-        // Nếu chỉ có 2 điểm, chỉ cần "Đi thẳng" đến đích
+      if (i == 0 || originalRoute.length < 3) {
         directions.add("Đi thẳng đến đích");
       } else {
-        // Tính hướng dựa trên 3 điểm (trừ đoạn cuối)
         String direction = _getDirection(
-            selectedRoute[i - 1], selectedRoute[i], selectedRoute[i + 1]);
+            originalRoute[i - 1], originalRoute[i], originalRoute[i + 1]);
         directions.add(direction);
       }
     }
 
-    // Đảm bảo hướng dẫn cuối cùng là "Đến đích"192.168.0.100
     if (directions.isNotEmpty && directions.last != "Đi thẳng đến đích") {
       directions.add("Đi thẳng đến đích");
-      if (selectedRoute.length > 1) {
+      if (originalRoute.length > 1) {
         segmentDistances.add(_calculateDistance(
-            selectedRoute[selectedRoute.length - 2], selectedRoute.last));
+            originalRoute[originalRoute.length - 2], originalRoute.last));
       }
     }
   }
@@ -187,24 +227,24 @@ String userPositionRP = "userPosition";
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Text(
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
                   "Tổng khoảng cách: ${pathDistance != null ? pathDistance!.toStringAsFixed(2) : '0.00'} mét",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
+              ),
               if (directions.isNotEmpty)
-              ...directions.asMap().entries.map((entry) {
-              int index = entry.key + 1;
-              String direction = entry.value;
-                String distanceText = entry.key < segmentDistances.length
-                    ? " (${segmentDistances[entry.key].toStringAsFixed(2)} mét)"
-                    : "";
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: Text("$index. $direction$distanceText"),
-              );
+                ...directions.asMap().entries.map((entry) {
+                  int index = entry.key + 1;
+                  String direction = entry.value;
+                  String distanceText = entry.key < segmentDistances.length
+                      ? " (${segmentDistances[entry.key].toStringAsFixed(2)} mét)"
+                      : "";
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: Text("$index. $direction$distanceText"),
+                  );
                 }).toList()
               else
                 const Text("Không có hướng dẫn nào."),
@@ -305,8 +345,7 @@ String userPositionRP = "userPosition";
           }
           print("Loaded GeoJSON from $endpoint");
         } else {
-          print(
-              "Failed to load GeoJSON from $endpoint: ${response.statusCode}");
+          print("Failed to load GeoJSON from $endpoint: ${response.statusCode}");
         }
       } catch (e) {
         print("Error loading GeoJSON from $endpoint: $e");
@@ -400,33 +439,34 @@ String userPositionRP = "userPosition";
       final response =
           await http.get(Uri.parse("https://trannguyenanhminh.click/geojson/POI"));
       if (response.statusCode == 200) {
-        final poiJson = json.decode(response.body);
+        final poiJson = jsonDecode(response.body);
+        // Lấy dữ liệu mô tả từ hàm getPOIDescriptions
+        final poiDescriptions = getPOIDescriptions();
 
         poiList = [];
         for (var feature in poiJson['features']) {
           final properties = feature['properties'];
           final coordinates = feature['geometry']['coordinates'];
 
-          // Lấy RP của POI
           String rp = properties['RP'] ?? 'unknown';
-
-          // Dựa vào RP để lấy tên thư mục từ ánh xạ
           String folderName = rpToFolderMap[rp] ?? 'unknown';
-
-          // Lấy danh sách hình ảnh thực tế từ thư mục
           List<String> images = await _getImagesFromFolder(folderName);
 
-          poiList.add({
+          var poi = {
             "name": properties['Name'] ?? 'Unknown',
             "rp": properties['RP'] ?? 'Unknown',
             "coordinates": LatLng(coordinates[1], coordinates[0]),
-            "description": properties['Description'] ?? 'Không có mô tả',
+            // Sử dụng mô tả từ getPOIDescriptions thay vì từ file geojson
+            "description": poiDescriptions[rp] ?? 'Không có mô tả',
             "images": images,
-          });
+          };
+
+          print(
+              "Loaded POI: ${poi['name']}, RP: ${poi['rp']}, Description: ${poi['description']}");
+
+          poiList.add(poi);
         }
 
-        // Thêm vị trí của User vào poiList để có thể sử dụng trong graph
-    
         for (int i = 0; i < waypoints.length; i++) {
           poiList.add({
             "name": "Waypoint $i",
@@ -461,7 +501,6 @@ String userPositionRP = "userPosition";
     for (var poi in poiList) {
       String poiRP = poi["rp"];
       generatedGraph[poiRP] = [];
-      LatLng coordinates = poi["coordinates"];
     }
 
     for (var wp1 in poiList.where((poi) => poi["rp"].startsWith("wp_"))) {
@@ -510,17 +549,17 @@ String userPositionRP = "userPosition";
       }
 
       if (closestWaypoints.isEmpty) {
-      for (var otherPoi in poiList) {
-        if (otherPoi == poi) continue;
-        String otherRP = otherPoi["rp"];
+        for (var otherPoi in poiList) {
+          if (otherPoi == poi) continue;
+          String otherRP = otherPoi["rp"];
           LatLng otherCoords = otherPoi["coordinates"];
           if (!_isPathBlocked(poiCoords, otherCoords)) {
             double distance = _calculateDistance(poiCoords, otherCoords);
-          generatedGraph[poiRP]!.add({"rp": otherRP, "distance": distance});
+            generatedGraph[poiRP]!.add({"rp": otherRP, "distance": distance});
             print("Added direct edge: $poiRP -> $otherRP, distance: $distance");
+          }
         }
       }
-    }
     }
 
     return generatedGraph;
@@ -535,25 +574,6 @@ String userPositionRP = "userPosition";
       }
     }
     return false;
-  }
-
-  bool _isPointInPolygon(LatLng point, List<LatLng> polygon) {
-    int j = polygon.length - 1;
-    bool inside = false;
-
-    for (int i = 0; i < polygon.length; i++) {
-      if (((polygon[i].latitude > point.latitude) !=
-              (polygon[j].latitude > point.latitude)) &&
-          (point.longitude <
-              (polygon[j].longitude - polygon[i].longitude) *
-                      (point.latitude - polygon[i].latitude) /
-                      (polygon[j].latitude - polygon[i].latitude) +
-                  polygon[i].longitude)) {
-        inside = !inside;
-      }
-      j = i;
-    }
-    return inside;
   }
 
   bool _doLinesIntersect(LatLng p1, LatLng q1, LatLng p2, LatLng q2) {
@@ -640,9 +660,9 @@ String userPositionRP = "userPosition";
       }
     }
 
-      print("No path found from $start to $end");
-      return [];
-    }
+    print("No path found from $start to $end");
+    return [];
+  }
 
   double _heuristic(String current, String goal) {
     final currentPoi = poiList.firstWhere((poi) => poi['rp'] == current);
@@ -674,60 +694,153 @@ String userPositionRP = "userPosition";
     return totalDistance;
   }
 
-  void _drawRouteCD(BuildContext context, VoidCallback setStateCallback, {required bool showDirections}) {
-    print("Drawing route: startPOI=$startPOI, endPOI=$endPOI");
+  List<LatLng> _smoothRoute(List<LatLng> route, {int segmentsPerPoint = 10}) {
+    if (route.length < 2) return route;
+
+    List<LatLng> smoothedRoute = [];
+
+    LatLng p0 = route.first;
+    LatLng p1 = route.first;
+    LatLng p2 = route[1];
+    LatLng p3 = route.length > 2 ? route[2] : route[1];
+
+    smoothedRoute.add(route.first);
+
+    for (int i = 0; i < route.length - 1; i++) {
+      p0 = i > 0 ? route[i - 1] : route.first;
+      p1 = route[i];
+      p2 = route[i + 1];
+      p3 = i + 2 < route.length ? route[i + 2] : route[i + 1];
+
+      for (int j = 1; j <= segmentsPerPoint; j++) {
+        double t = j / segmentsPerPoint;
+        double t2 = t * t;
+        double t3 = t2 * t;
+
+        double x = 0.5 *
+            ((2 * p1.latitude) +
+              (-p0.latitude + p2.latitude) * t +
+                (2 * p0.latitude -
+                        5 * p1.latitude +
+                        4 * p2.latitude -
+                        p3.latitude) *
+                    t2 +
+                (-p0.latitude +
+                        3 * p1.latitude -
+                        3 * p2.latitude +
+                        p3.latitude) *
+                    t3);
+
+        double y = 0.5 *
+            ((2 * p1.longitude) +
+              (-p0.longitude + p2.longitude) * t +
+                (2 * p0.longitude -
+                        5 * p1.longitude +
+                        4 * p2.longitude -
+                        p3.longitude) *
+                    t2 +
+                (-p0.longitude +
+                        3 * p1.longitude -
+                        3 * p2.longitude +
+                        p3.longitude) *
+                    t3);
+
+        smoothedRoute.add(LatLng(x, y));
+      }
+    }
+
+    smoothedRoute.add(route.last);
+    return smoothedRoute;
+  }
+
+  List<Marker> _createDottedRoute(List<LatLng> route, {double dotSpacing = 5.0, double dotSize = 10.0}) {
+    List<Marker> dottedMarkers = [];
+
+    if (route.length < 2) return dottedMarkers;
+
+    for (int i = 0; i < route.length - 1; i++) {
+      LatLng start = route[i];
+      LatLng end = route[i + 1];
+      double distance = _calculateDistance(start, end);
+
+      int numDots = (distance / dotSpacing).floor();
+      if (numDots == 0) numDots = 1;
+
+      for (int j = 0; j <= numDots; j++) {
+        double t = j / numDots;
+        double lat = start.latitude + (end.latitude - start.latitude) * t;
+        double lng = start.longitude + (end.longitude - start.longitude) * t;
+
+        double opacity = (1.0 - (j / numDots)) * 0.6;
+        dottedMarkers.add(
+          Marker(
+            point: LatLng(lat, lng),
+            width: dotSize,
+            height: dotSize,
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.blue
+                    .withOpacity(opacity), // Đổi màu thành xanh dương
+                border: Border.all(
+                  color: Colors.blue.withOpacity(
+                      opacity * 0.5), // Đổi màu viền thành xanh dương
+                  width: 1.0,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    return dottedMarkers;
+  }
+
+  void _drawRouteCD(BuildContext context, VoidCallback setStateCallback,
+      {required bool showDirections}) {
     if (startPOI != null && endPOI != null) {
-      selectedRoute = _findShortestPath(startPOI!, endPOI!);
-      if (selectedRoute.isNotEmpty) {
-        pathDistance = _calculatePathDistance(selectedRoute);
-        print("Path distance calculated: $pathDistance meters");
+      originalRoute = _findShortestPath(startPOI!, endPOI!);
+      if (originalRoute.isNotEmpty) {
+        selectedRoute = _smoothRoute(originalRoute, segmentsPerPoint: 10);
+        pathDistance = _calculatePathDistance(originalRoute);
         _calculateDirections();
         if (showDirections) {
-          print("Showing directions dialog...");
-        _showDirections(context);
+          _showDirections(context);
           _speakDirections();
         }
         setStateCallback();
       } else {
-        print("No route found between $startPOI and $endPOI");
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Không tìm thấy đường đi giữa hai điểm")),
+          const SnackBar(
+              content: Text("Không tìm thấy đường đi giữa hai điểm")),
         );
       }
-    } else {
-      print("StartPOI or EndPOI is null: startPOI=$startPOI, endPOI=$endPOI");
     }
   }
 
-
   void _drawRoute(BuildContext context, VoidCallback setStateCallback, {required bool showDirections}) {
-    print("Drawing route: startPOI=$startPOI, endPOI=$endPOI");
     if (startPOI != null && endPOI != null) {
-      selectedRoute = _findShortestPath(startPOI!, endPOI!);
-      if (selectedRoute.isNotEmpty) {
-        pathDistance = _calculatePathDistance(selectedRoute);
-        print("Path distance calculated: $pathDistance meters");
+      originalRoute = _findShortestPath(startPOI!, endPOI!);
+      if (originalRoute.isNotEmpty) {
+        selectedRoute = _smoothRoute(originalRoute, segmentsPerPoint: 10);
+        pathDistance = _calculatePathDistance(originalRoute); // Tính khoảng cách trên đường gốc
         _calculateDirections();
         if (showDirections) {
-          print("Showing directions dialog...");
           _showDirections(context);
-        
         }
         setStateCallback();
       } else {
-        print("No route found between $startPOI and $endPOI");
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Không tìm thấy đường đi giữa hai điểm")),
         );
       }
-    } else {
-      print("StartPOI or EndPOI is null: startPOI=$startPOI, endPOI=$endPOI");
     }
   }
 
-void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
+  void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
     var poi = poiList.firstWhere(
-      (poi) => poi['rp'] == rp,
+          (poi) => poi['rp'] == rp,
       orElse: () => {
         "name": "Không tìm thấy",
         "description": "Không tìm thấy POI với RP: $rp",
@@ -739,6 +852,9 @@ void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
       print("Không tìm thấy POI với RP: $rp");
       return;
     }
+
+    print(
+        "POI tapped: ${poi['name']}, RP: ${poi['rp']}, Description: ${poi['description']}");
 
     showModalBottomSheet(
       context: context,
@@ -757,7 +873,7 @@ void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    poi['name'],
+                    poi['name'] ?? "Unknown",
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -779,15 +895,13 @@ void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
                 children: [
                   ElevatedButton.icon(
                     onPressed: () {
-                      print("Bắt đầu button pressed: Setting startPOI to $userPositionRP, endPOI to $rp");
                       startPOI = userPositionRP;
                       endPOI = rp;
                       selectedMarkerRP = userPositionRP;
                       secondSelectedMarkerRP = rp;
 
-                      _drawRouteCD(context, setStateCallback, showDirections: true);
-
-                      print("Closing POI info modal...");
+                      _drawRouteCD(context, setStateCallback,
+                          showDirections: true);
                       Navigator.of(context).pop();
                     },
                     icon: const Icon(Icons.play_arrow, color: Colors.white),
@@ -810,8 +924,6 @@ void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
                       selectedMarkerRP = userPositionRP;
                       secondSelectedMarkerRP = rp;
                       _drawRoute(context, setStateCallback, showDirections: true);
-
-                      print("Closing POI info modal...");
                       Navigator.of(context).pop();
                     },
                     icon: const Icon(Icons.directions, color: Colors.white),
@@ -826,39 +938,63 @@ void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      // Điều hướng đến màn hình InformationPage
+                      Navigator.of(context).pop(); // Đóng bottom sheet
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => InformationPage()),
+                      );
+                    },
+                    icon: const Icon(Icons.info, color: Colors.white),
+                    label: Text(
+                      "Thông tin",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.yellow[700], // Màu vàng
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 10),
               Expanded(
                 child: poi['images'] != null && (poi['images'] as List).isNotEmpty
                     ? ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: (poi['images'] as List).length,
-                        itemBuilder: (context, index) {
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 10),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.asset(
-                                (poi['images'] as List)[index],
+                    scrollDirection: Axis.horizontal,
+                    itemCount: (poi['images'] as List).length,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 10),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.asset(
+                            (poi['images'] as List)[index],
+                            width: 150,
+                            height: 100,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
                                 width: 150,
                                 height: 100,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    width: 150,
-                                    height: 100,
-                                    color: Colors.grey,
-                                    child: const Center(
-                                      child: Icon(Icons.error, color: Colors.white),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          );
-                        },
-                      )
+                                color: Colors.grey,
+                                child: const Center(
+                                          child: Icon(Icons.error,
+                                              color: Colors.white),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                )
                     : const Center(child: Text("Không có hình ảnh")),
               ),
             ],
@@ -870,169 +1006,158 @@ void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
     setStateCallback();
   }
 
-Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
-  return Stack(
-    children: [
-      FlutterMap(
-        mapController: mapController,
-        options: MapOptions(
-          center: userPositionCoordinates,  // Updated coordinates
-          zoom: currentZoom,
-          minZoom: 15.0,
-          maxZoom: 22.0,
-          interactiveFlags: InteractiveFlag.all,
-          onPositionChanged: (position, hasGesture) {
-            if (position.zoom != null) {
-              currentZoom = position.zoom!;
-              setStateCallback();  // Rebuild the widget to update the zoom
-            }
+  Widget buildMapSection(BuildContext context, VoidCallback setStateCallback) {
+    List<Marker> dottedRouteMarkers = selectedRoute.isNotEmpty
+        ? _createDottedRoute(selectedRoute, dotSpacing: 5.0, dotSize: 10.0)
+        : [];
 
-            // Update user position only when it's not triggered by a user action
-            if (position.center != null && !hasGesture) {
-              userPositionCoordinates = position.center!;
-              final userPoiIndex = poiList.indexWhere((poi) => poi['rp'] == userPositionRP);
-              if (userPoiIndex != -1) {
-                poiList[userPoiIndex]['coordinates'] = userPositionCoordinates;
-                graph = _generateGraph();
+    return Stack(
+      children: [
+        FlutterMap(
+          mapController: mapController,
+          options: MapOptions(
+            center: userPositionCoordinates,
+            zoom: currentZoom,
+            minZoom: 15.0,
+            maxZoom: 22.0,
+            interactiveFlags: InteractiveFlag.all,
+            onPositionChanged: (position, hasGesture) {
+              if (position.zoom != null) {
+                currentZoom = position.zoom!;
+                setStateCallback();
               }
-              setStateCallback();
-            }
-          },
-        ),
-        children: [
-          TileLayer(
-            urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-            subdomains: ['a', 'b', 'c'],
+
+              if (position.center != null && !hasGesture) {
+                userPositionCoordinates = position.center!;
+                final userPoiIndex = poiList.indexWhere((poi) => poi['rp'] == userPositionRP);
+                if (userPoiIndex != -1) {
+                  poiList[userPoiIndex]['coordinates'] = userPositionCoordinates;
+                  graph = _generateGraph();
+                }
+                setStateCallback();
+              }
+            },
           ),
-          if (geoJsonParser.polygons.isNotEmpty)
-            PolygonLayer(polygons: geoJsonParser.polygons),
-          if (geoJsonParser.polylines.isNotEmpty)
-            PolylineLayer(polylines: geoJsonParser.polylines),
+          children: [
+            TileLayer(
+              urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+              subdomains: ['a', 'b', 'c'],
+            ),
+            if (geoJsonParser.polygons.isNotEmpty)
+              PolygonLayer(polygons: geoJsonParser.polygons),
+            MarkerLayer(
+              rotate: true,
+              markers: [
+                if (currentZoom >= 20) ...poiList.map((poi) {
+                  if (poi['rp'] == userPositionRP) return null;
+                  if (poi['name'] == 'Cầu thang') return null;
 
-          // MARKERS LAYER (POIs + User)
-          MarkerLayer(
-            rotate: true,
-            markers: [
-              if (currentZoom >= 20) ...poiList.map((poi) {
-                if (poi['rp'] == userPositionRP) return null;
-
-                final isSelected = poi['rp'] == selectedMarkerRP || poi['rp'] == secondSelectedMarkerRP;
-                return Marker(
-                  point: poi['coordinates'] as LatLng,
-                  width: isSelected ? 80.0 : 60.0,
-                  height: isSelected ? 80.0 : 60.0,
-                  child: GestureDetector(
-                    onTap: () {
-                      _onPOITap(poi['rp'] as String, context, setStateCallback);
-                      setStateCallback();  // Update state when POI is tapped
-                    },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-                          decoration: BoxDecoration(
-                            color: isSelected ? Colors.green.withOpacity(0.7) : Colors.white.withOpacity(0.7),
-                            borderRadius: BorderRadius.circular(4.0),
-                          ),
-                          child: Text(
-                            poi['name'] ?? "Unknown",
-                            style: TextStyle(
-                              fontSize: isSelected ? 10 : 8,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ),
-                        if (isSelected)
-                          Icon(
-                            Icons.location_on,
-                            color: Colors.red,
-                            size: 30,
-                          )
-                        else
+                  final isSelected = poi['rp'] == selectedMarkerRP || poi['rp'] == secondSelectedMarkerRP;
+                  return Marker(
+                    point: poi['coordinates'] as LatLng,
+                    width: isSelected ? 80.0 : 60.0,
+                    height: isSelected ? 80.0 : 60.0,
+                    child: GestureDetector(
+                      onTap: () {
+                        _onPOITap(poi['rp'] as String, context, setStateCallback);
+                        setStateCallback();
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                           Container(
-                            width: 10,
-                            height: 10,
+                            padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                             decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.red.withOpacity(0.6),
-                              border: Border.all(
-                                color: Colors.red,
-                                width: 1,
+                              color: isSelected ? Colors.green.withOpacity(0.7) : Colors.white.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(4.0),
+                            ),
+                            child: Text(
+                              poi['name'] ?? "Unknown",
+                              style: TextStyle(
+                                fontSize: isSelected ? 10 : 8,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
                               ),
                             ),
                           ),
-                      ],
-                    ),
-                  ),
-                );
-              }).whereType<Marker>().toList(),
-
-              // USER POSITION marker
-              Marker(
-                point: userPositionCoordinates,
-                width: selectedMarkerRP == userPositionRP ? 80.0 : 60.0,
-                height: selectedMarkerRP == userPositionRP ? 80.0 : 60.0,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-                      decoration: BoxDecoration(
-                        color: selectedMarkerRP == userPositionRP ? Colors.green.withOpacity(0.7) : Colors.white,
-                        borderRadius: BorderRadius.circular(4.0),
+                          if (isSelected)
+                            Icon(
+                              Icons.location_on,
+                              color: Colors.red,
+                              size: 30,
+                            )
+                          else
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.red.withOpacity(0.6),
+                                border: Border.all(
+                                  color: Colors.red,
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                      child: Text(
-                        "User",  // Display "User"
-                        style: TextStyle(
-                          fontSize: selectedMarkerRP == userPositionRP ? 12 : 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                    ),
+                  );
+                }).whereType<Marker>().toList(),
+
+                Marker(
+                  point: userPositionCoordinates,
+                  width: selectedMarkerRP == userPositionRP ? 80.0 : 60.0,
+                  height: selectedMarkerRP == userPositionRP ? 80.0 : 60.0,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                        decoration: BoxDecoration(
+                          color: selectedMarkerRP == userPositionRP ? Colors.green.withOpacity(0.7) : Colors.white,
+                          borderRadius: BorderRadius.circular(4.0),
+                        ),
+                        child: Text(
+                          "User",
+                          style: TextStyle(
+                            fontSize: selectedMarkerRP == userPositionRP ? 12 : 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
                         ),
                       ),
-                    ),
-                    Icon(
-                      Icons.person_pin_circle,
-                      color: selectedMarkerRP == userPositionRP ? Colors.red : Colors.blue,
-                      size: 32,
-                    ),
-                  ],
+                      Icon(
+                        Icons.person_pin_circle,
+                        color: selectedMarkerRP == userPositionRP ? Colors.red : Colors.blue,
+                        size: 32,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
 
-          // PATH / ROUTE LINE (if a route is selected)
-          if (selectedRoute.isNotEmpty)
-            PolylineLayer(
-              polylines: [
-                Polyline(
-                  points: selectedRoute,
-                  color: Colors.red,
-                  strokeWidth: 4.0,
-                ),
+                ...dottedRouteMarkers,
               ],
             ),
-        ],
-      ),
-      if (pathDistance != null)
-        Positioned(
-          top: 10,
-          left: 10,
-          child: Container(
-            padding: const EdgeInsets.all(8.0),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(8.0),
-            ),
-            child: Text(
-              "Tổng khoảng cách: ${pathDistance!.toStringAsFixed(2)} mét",
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          ],
+        ),
+        if (pathDistance != null)
+          Positioned(
+            top: 10,
+            left: 10,
+            child: Container(
+              padding: const EdgeInsets.all(8.0),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+              child: Text(
+                "Tổng khoảng cách: ${pathDistance!.toStringAsFixed(2)} mét",
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
-        ),
-    ],
-  );
-}
+      ],
+    );
+  }
 }

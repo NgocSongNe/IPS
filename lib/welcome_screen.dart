@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/home.dart';
-import 'package:flutter_application_1/tutorial_overlay.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 
-class WelcomePage extends StatefulWidget {
-  const WelcomePage({super.key});
 
+class WelcomePage extends StatefulWidget {
+  WelcomePage({super.key});
   @override
   State<WelcomePage> createState() => _WelcomePageState();
 }
@@ -13,10 +13,8 @@ class WelcomePage extends StatefulWidget {
 class _WelcomePageState extends State<WelcomePage> {
   @override
   Widget build(BuildContext context) {
-    return TutorialOverlay(
-      startTutorial: false, // Không bắt đầu hướng dẫn ở đây
-      child: Material(
-        child: SizedBox(
+    return Material(
+        child: Container(
       width: MediaQuery.of(context).size.width,
       height: MediaQuery.of(context).size.height,
       child: Stack(
@@ -29,10 +27,10 @@ class _WelcomePageState extends State<WelcomePage> {
           Container(
             width: MediaQuery.of(context).size.width,
             height: MediaQuery.of(context).size.height / 1.6,
-                decoration: const BoxDecoration(
+            decoration: BoxDecoration(
                 color: Colors.lightGreen,
-                  borderRadius: BorderRadius.only(bottomRight: Radius.circular(70)),
-                ),
+                borderRadius:
+                    BorderRadius.only(bottomRight: Radius.circular(70))),
             child: Center(
               child: Image.asset(
                 "assets/icon/DLU_logo.png",
@@ -57,7 +55,7 @@ class _WelcomePageState extends State<WelcomePage> {
                     style: GoogleFonts.openSans(
                       fontSize: 19,
                       fontWeight: FontWeight.w600,
-                      letterSpacing: 1,
+                      letterSpacing: 3,
                     ),
                   ),
                   SizedBox(
@@ -110,6 +108,6 @@ class _WelcomePageState extends State<WelcomePage> {
           )
         ],
       ),
-    )));
+    ));
   }
 }
