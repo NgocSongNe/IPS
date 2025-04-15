@@ -45,7 +45,7 @@ class CategoryModel {
     );
      categories.add(
       CategoryModel(
-        name: 'Phòng học',
+        name: 'Khu vực tự học ',
         icons: Icon(Icons.class_),
         boxColor: Color(0xffE1E1E1)
       )
