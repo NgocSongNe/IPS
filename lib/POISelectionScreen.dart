@@ -895,8 +895,11 @@ class POISelectionScreen {
                 style: TextStyle(fontSize: 14),
               ),
               const SizedBox(height: 10),
-              Row(
+             SingleChildScrollView(  // Cho phép cuộn ngang
+  scrollDirection: Axis.horizontal,  // Cuộn theo chiều ngang
+  child: Row(
                 children: [
+                  
                   ElevatedButton.icon(
                     onPressed: () {
                       startPOI = userPositionRP;
@@ -969,6 +972,7 @@ class POISelectionScreen {
                   ),
                 ],
               ),
+             ),
               const SizedBox(height: 10),
               Expanded(
                 child: poi['images'] != null && (poi['images'] as List).isNotEmpty
