@@ -6,12 +6,15 @@ import 'package:flutter_application_1/home.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_application_1/models/category_model.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_application_1/POISelectionScreen.dart'; // Import POISelectionScreen
 import 'Location.dart';
 
 class InformationPage extends StatefulWidget {
-  final String? poiName; // Tham số để nhận tên địa điểm từ trang Home
+  final String? poiName;
+  final POISelectionScreen?
+      poiSelectionScreen; // Nhận poiSelectionScreen từ HomePage
 
-  const InformationPage({super.key, this.poiName});
+  const InformationPage({super.key, this.poiName, this.poiSelectionScreen});
 
   @override
   State<InformationPage> createState() => _InformationPageState();
@@ -22,7 +25,6 @@ class _InformationPageState extends State<InformationPage> {
   List<Widget> postCards = [];
   List<CategoryModel> categories = [];
 
-  // Danh sách các thư mục chứa hình ảnh cho từng mục
   final Map<String, String> folderMap = {
     "TV3,4": "tv3_4",
     "Cửa ra vào": "cua_ra_vao",
@@ -35,7 +37,6 @@ class _InformationPageState extends State<InformationPage> {
     "Phòng tạp chí": "phong_tap_chi",
   };
 
-  // Lưu trữ thông tin bài đăng để điều hướng
   final Map<String, Map<String, String>> postMap = {};
 
   @override
@@ -43,7 +44,6 @@ class _InformationPageState extends State<InformationPage> {
     super.initState();
     getCategories();
 
-    // Khởi tạo các bài đăng và ánh xạ với folderName
     postCards = [
       _buildPostCard(
         caption:
@@ -92,7 +92,6 @@ class _InformationPageState extends State<InformationPage> {
       ),
     ];
 
-    // Tạo ánh xạ từ folderName đến thông tin bài đăng
     postMap['tv3_4'] = {
       'caption':
           'Phòng máy tính TV3 và TV4 với hệ thống trang thiết bị hiện đại, phòng học được trang bị các bộ máy tính được kết nối Internet chất lượng cao. Phòng học đáp ứng được các nhu cầu về học tập và làm việc một cách ổn định và mượt mà.',
@@ -139,10 +138,8 @@ class _InformationPageState extends State<InformationPage> {
       'folderName': 'phong_tap_chi',
     };
 
-    // Kiểm tra nếu có poiName, điều hướng đến bài đăng tương ứng
     if (widget.poiName != null) {
       String? folderName;
-      // Tìm folderName tương ứng với poiName
       folderMap.forEach((key, value) {
         if (key == widget.poiName) {
           folderName = value;
@@ -170,7 +167,6 @@ class _InformationPageState extends State<InformationPage> {
     categories = CategoryModel.getCategories();
   }
 
-  // Hàm lấy danh sách hình ảnh từ thư mục
   Future<List<String>> _getImagesFromFolder(String folderName) async {
     try {
       final manifestContent =
@@ -315,9 +311,22 @@ class _InformationPageState extends State<InformationPage> {
       ),
       child: GestureDetector(
         onTap: () {
+          if (widget.poiSelectionScreen == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text(
+                      'Không thể mở tìm kiếm: Dữ liệu bản đồ không khả dụng')),
+            );
+            return;
+          }
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => SuggestedPlacesScreen()),
+            MaterialPageRoute(
+              builder: (context) => SuggestedPlacesScreen(
+                poiSelectionScreen: widget.poiSelectionScreen,
+                sourcePage: 'InformationPage', // Truyền sourcePage
+              ),
+            ),
           );
         },
         child: AbsorbPointer(
@@ -420,7 +429,8 @@ class _InformationPageState extends State<InformationPage> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 10.0),
+              padding:
+                  const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 10.0),
               child: Text(
                 caption,
                 style: GoogleFonts.openSans(fontSize: 14),
@@ -428,7 +438,8 @@ class _InformationPageState extends State<InformationPage> {
             ),
             if (customImagePath != null && customImagePath.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
+                padding: const EdgeInsets.only(
+                    left: 16.0, right: 16.0, bottom: 16.0),
                 child: ClipRRect(
                   borderRadius: const BorderRadius.all(Radius.circular(10)),
                   child: Image.file(
@@ -441,13 +452,16 @@ class _InformationPageState extends State<InformationPage> {
               )
             else if (folderName.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
+                padding: const EdgeInsets.only(
+                    left: 16.0, right: 16.0, bottom: 16.0),
                 child: FutureBuilder<List<String>>(
                   future: _getImagesFromFolder(folderName),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return Center(child: CircularProgressIndicator());
-                    } else if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                    } else if (snapshot.hasError ||
+                        !snapshot.hasData ||
+                        snapshot.data!.isEmpty) {
                       return Center(child: Text("Không có hình ảnh"));
                     } else {
                       final images = snapshot.data!;
@@ -467,7 +481,8 @@ class _InformationPageState extends State<InformationPage> {
     const double collageHeight = 200;
     const double gap = 2.0;
 
-    Widget buildImage(String imagePath, {required double width, required double height}) {
+    Widget buildImage(String imagePath,
+        {required double width, required double height}) {
       return Image.asset(
         imagePath,
         width: width,
@@ -617,10 +632,7 @@ class _InformationPageState extends State<InformationPage> {
             MaterialPageRoute(builder: (context) => HomePage()),
           );
         } else if (index == 1) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => InformationPage()),
-          );
+          // Đã ở trang InformationPage, không cần làm gì
         } else if (index == 2) {
           Navigator.push(
             context,
@@ -663,7 +675,8 @@ class PostDetailPage extends StatelessWidget {
     this.customImagePath,
   }) : super(key: key);
 
-  Future<List<String>> _getImagesFromFolder(BuildContext context, String folderName) async {
+  Future<List<String>> _getImagesFromFolder(
+      BuildContext context, String folderName) async {
     try {
       final manifestContent =
           await DefaultAssetBundle.of(context).loadString('AssetManifest.json');
@@ -690,7 +703,8 @@ class PostDetailPage extends StatelessWidget {
               child: SingleChildScrollView(
                 child: Card(
                   margin: const EdgeInsets.all(12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -700,19 +714,23 @@ class PostDetailPage extends StatelessWidget {
                         ),
                         title: Text(
                           'Thư viện DLU',
-                          style: GoogleFonts.openSans(fontWeight: FontWeight.bold),
+                          style:
+                              GoogleFonts.openSans(fontWeight: FontWeight.bold),
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 10.0),
+                        padding: const EdgeInsets.only(
+                            left: 16.0, right: 16.0, bottom: 10.0),
                         child: Text(
                           caption,
                           style: GoogleFonts.openSans(fontSize: 14),
                         ),
                       ),
-                      if (customImagePath != null && customImagePath!.isNotEmpty)
+                      if (customImagePath != null &&
+                          customImagePath!.isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
+                          padding: const EdgeInsets.only(
+                              left: 16.0, right: 16.0, bottom: 16.0),
                           child: GestureDetector(
                             onTap: () {
                               Navigator.push(
@@ -727,7 +745,8 @@ class PostDetailPage extends StatelessWidget {
                               );
                             },
                             child: ClipRRect(
-                              borderRadius: const BorderRadius.all(Radius.circular(10)),
+                              borderRadius:
+                                  const BorderRadius.all(Radius.circular(10)),
                               child: Image.file(
                                 File(customImagePath!),
                                 fit: BoxFit.cover,
@@ -741,9 +760,12 @@ class PostDetailPage extends StatelessWidget {
                         FutureBuilder<List<String>>(
                           future: _getImagesFromFolder(context, folderName),
                           builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
                               return Center(child: CircularProgressIndicator());
-                            } else if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                            } else if (snapshot.hasError ||
+                                !snapshot.hasData ||
+                                snapshot.data!.isEmpty) {
                               return Center(child: Text("Không có hình ảnh"));
                             } else {
                               final images = snapshot.data!;
@@ -753,13 +775,15 @@ class PostDetailPage extends StatelessWidget {
                                 itemCount: images.length,
                                 itemBuilder: (context, index) {
                                   return Padding(
-                                    padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
+                                    padding: const EdgeInsets.only(
+                                        left: 16.0, right: 16.0, bottom: 16.0),
                                     child: GestureDetector(
                                       onTap: () {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) => FullScreenImagePage(
+                                            builder: (context) =>
+                                                FullScreenImagePage(
                                               images: images,
                                               initialIndex: index,
                                               isAsset: true,
@@ -768,7 +792,8 @@ class PostDetailPage extends StatelessWidget {
                                         );
                                       },
                                       child: ClipRRect(
-                                        borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                        borderRadius: const BorderRadius.all(
+                                            Radius.circular(10)),
                                         child: Image.asset(
                                           images[index],
                                           fit: BoxFit.cover,

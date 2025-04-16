@@ -17,7 +17,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_application_1/ultils/permission.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Thêm import này
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -36,9 +36,11 @@ class _HomePageState extends State<HomePage> {
   PhotoViewComputedScale _photoViewScale = PhotoViewComputedScale.covered * 1;
   File? profileImage;
   late POISelectionScreen poiSelectionScreen;
-  LatLng userPositionCoordinates = LatLng(11.95722012378790, 108.44507513707570); // Tọa độ mặc định cho người dùng
+  LatLng userPositionCoordinates =
+      LatLng(11.95722012378790, 108.44507513707570);
   String? selectedMarkerRP;
   Timer? wifiScanTimer;
+  bool showDirectionsButton = false; // Trạng thái hiển thị nút hướng dẫn
 
   @override
   void initState() {
@@ -50,31 +52,30 @@ class _HomePageState extends State<HomePage> {
     scanAndSendWiFiData();
     requestPermissions();
 
-    // Kiểm tra và hiển thị dialog nếu cần
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkAndShowGuideDialog());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndShowGuideDialog();
+      // Kiểm tra nếu có directions, hiển thị popup
+      if (poiSelectionScreen.directions.isNotEmpty) {
+        _showDirectionsPopup();
+      }
+    });
   }
 
-  // Hàm kiểm tra và hiển thị dialog
   Future<void> _checkAndShowGuideDialog() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool hasShownDialog = prefs.getBool('hasShownGuideDialog') ?? false;
 
     if (!hasShownDialog) {
       _showGuideDialog();
-      // Lưu trạng thái đã hiển thị dialog
       await prefs.setBool('hasShownGuideDialog', true);
     }
   }
 
   Future<void> scanAndSendWiFiData() async {
     try {
-      // Quét mạng Wi-Fi
       List<WiFiAccessPoint> wifiList = await WifiScanner.scanWiFi();
-      
-      // Lấy các giá trị RSSI từ danh sách Wi-Fi
       List<int> wifiData = wifiList.map((wifi) => wifi.level).toList();
 
-      // Gửi dữ liệu Wi-Fi lên server
       final url = Uri.parse('https://trannguyenanhminh.click/predict');
       final response = await http.post(
         url,
@@ -84,16 +85,11 @@ class _HomePageState extends State<HomePage> {
 
       if (response.statusCode == 200) {
         print("✅ Dữ liệu đã được gửi thành công: ${response.body}");
-
-        // Xử lý dữ liệu trả về từ server
         final responseData = jsonDecode(response.body);
-
-        // Lấy thông tin từ dữ liệu trả về
         String name = responseData['name'];
         List coordinates = responseData['coordinates'];
         int rp = responseData['rp'];
 
-        // Cập nhật vị trí người dùng từ dự đoán của model
         setState(() {
           userPositionCoordinates = LatLng(coordinates[1], coordinates[0]);
           selectedMarkerRP = rp.toString();
@@ -177,6 +173,50 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Hàm hiển thị popup hướng dẫn chỉ đường
+  void _showDirectionsPopup() {
+    if (poiSelectionScreen.directions.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Hướng dẫn đường đi"),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children:
+                  poiSelectionScreen.directions.asMap().entries.map((entry) {
+                int index = entry.key + 1;
+                String direction = entry.value;
+                String distanceText = entry.key <
+                        poiSelectionScreen.segmentDistances.length
+                    ? " (${poiSelectionScreen.segmentDistances[entry.key].toStringAsFixed(2)} mét)"
+                    : "";
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2.0),
+                  child: Text("$index. $direction$distanceText"),
+                );
+              }).toList(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                setState(() {
+                  showDirectionsButton =
+                      true; // Hiển thị nút hướng dẫn sau khi đóng popup
+                });
+              },
+              child: Text("Đóng"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> sendWiFiDataToServer() async {
     final url = Uri.parse('https://trannguyenanhminh.click/predict');
 
@@ -188,30 +228,78 @@ class _HomePageState extends State<HomePage> {
       }
 
       List<String> macAddresses = [
-        "88:dc:97:12:62:cf", "8e:dc:97:12:65:63", "8e:dc:97:12:65:21",
-        "8e:dc:97:12:65:64", "8e:dc:97:12:65:2b", "88:dc:97:12:64:c4",
-        "88:dc:97:12:62:c6", "8e:dc:97:12:62:cf", "b4:5d:50:d7:e9:51",
-        "b4:5d:50:d7:e9:50", "88:dc:97:12:62:c7", "8e:dc:97:12:65:22",
-        "88:dc:97:12:65:57", "88:dc:97:12:64:82", "88:dc:97:12:64:83",
-        "8e:dc:97:12:62:c7", "8e:dc:97:12:62:c6", "8e:dc:97:12:64:82",
-        "8e:dc:97:12:64:83", "88:dc:97:12:65:58", "88:dc:97:12:65:2b",
-        "88:dc:97:12:65:2a", "8e:dc:97:12:64:c4", "88:dc:97:12:62:d0",
-        "b4:5d:50:d7:e9:40", "8e:dc:97:12:65:2a", "8e:dc:97:12:62:d0",
-        "88:dc:97:12:65:22", "88:dc:97:12:65:21", "8e:dc:97:12:65:58",
-        "8e:dc:97:12:65:57", "b4:5d:50:d7:e9:41", "88:dc:97:12:65:64",
-        "88:dc:97:12:65:63", "88:dc:97:12:62:cc", "8e:dc:97:12:62:cc",
-        "88:dc:97:12:65:54", "8e:dc:97:12:65:54", "88:dc:97:12:65:55",
-        "8e:dc:97:12:65:55", "88:dc:97:12:62:ff", "8e:dc:97:12:62:ff",
-        "68:ff:7b:d4:f1:cf", "88:dc:97:12:64:c5", "8e:dc:97:12:64:c5",
-        "8e:dc:97:12:62:cd", "88:dc:97:12:62:cd", "54:af:97:6b:ba:ce",
-        "94:b4:0f:e3:1d:40", "94:b4:0f:e3:1d:41", "40:e3:d6:cd:2d:21",
-        "40:e3:d6:cd:2d:20", "94:b4:0f:e3:1d:51", "68:ff:7b:d4:f1:ce",
-        "88:dc:97:12:63:00", "40:e3:d6:cd:2d:31", "40:e3:d6:cd:2d:30",
-        "8e:dc:97:12:63:00", "88:dc:97:12:64:4c", "8e:dc:97:12:5f:c9",
-        "18:64:72:55:12:90", "18:64:72:55:12:91", "94:b4:0f:e2:d0:b0",
-        "8e:dc:97:12:64:4c", "94:b4:0f:e3:05:51", "94:b4:0f:e3:1d:50",
-        "94:b4:0f:e3:05:40", "18:64:72:55:12:81", "8e:dc:97:12:5f:cc",
-        "18:64:72:55:12:80", "94:b4:0f:e2:97:71", "94:b4:0f:e2:97:70"
+        "88:dc:97:12:62:cf",
+        "8e:dc:97:12:65:63",
+        "8e:dc:97:12:65:21",
+        "8e:dc:97:12:65:64",
+        "8e:dc:97:12:65:2b",
+        "88:dc:97:12:64:c4",
+        "88:dc:97:12:62:c6",
+        "8e:dc:97:12:62:cf",
+        "b4:5d:50:d7:e9:51",
+        "b4:5d:50:d7:e9:50",
+        "88:dc:97:12:62:c7",
+        "8e:dc:97:12:65:22",
+        "88:dc:97:12:65:57",
+        "88:dc:97:12:64:82",
+        "88:dc:97:12:64:83",
+        "8e:dc:97:12:62:c7",
+        "8e:dc:97:12:62:c6",
+        "8e:dc:97:12:64:82",
+        "8e:dc:97:12:64:83",
+        "88:dc:97:12:65:58",
+        "88:dc:97:12:65:2b",
+        "88:dc:97:12:65:2a",
+        "8e:dc:97:12:64:c4",
+        "88:dc:97:12:62:d0",
+        "b4:5d:50:d7:e9:40",
+        "8e:dc:97:12:65:2a",
+        "8e:dc:97:12:62:d0",
+        "88:dc:97:12:65:22",
+        "88:dc:97:12:65:21",
+        "8e:dc:97:12:65:58",
+        "8e:dc:97:12:65:57",
+        "b4:5d:50:d7:e9:41",
+        "88:dc:97:12:65:64",
+        "88:dc:97:12:65:63",
+        "88:dc:97:12:62:cc",
+        "8e:dc:97:12:62:cc",
+        "88:dc:97:12:65:54",
+        "8e:dc:97:12:65:54",
+        "88:dc:97:12:65:55",
+        "8e:dc:97:12:65:55",
+        "88:dc:97:12:62:ff",
+        "8e:dc:97:12:62:ff",
+        "68:ff:7b:d4:f1:cf",
+        "88:dc:97:12:64:c5",
+        "8e:dc:97:12:64:c5",
+        "8e:dc:97:12:62:cd",
+        "88:dc:97:12:62:cd",
+        "54:af:97:6b:ba:ce",
+        "94:b4:0f:e3:1d:40",
+        "94:b4:0f:e3:1d:41",
+        "40:e3:d6:cd:2d:21",
+        "40:e3:d6:cd:2d:20",
+        "94:b4:0f:e3:1d:51",
+        "68:ff:7b:d4:f1:ce",
+        "88:dc:97:12:63:00",
+        "40:e3:d6:cd:2d:31",
+        "40:e3:d6:cd:2d:30",
+        "8e:dc:97:12:63:00",
+        "88:dc:97:12:64:4c",
+        "8e:dc:97:12:5f:c9",
+        "18:64:72:55:12:90",
+        "18:64:72:55:12:91",
+        "94:b4:0f:e2:d0:b0",
+        "8e:dc:97:12:64:4c",
+        "94:b4:0f:e3:05:51",
+        "94:b4:0f:e3:1d:50",
+        "94:b4:0f:e3:05:40",
+        "18:64:72:55:12:81",
+        "8e:dc:97:12:5f:cc",
+        "18:64:72:55:12:80",
+        "94:b4:0f:e2:97:71",
+        "94:b4:0f:e2:97:70"
       ];
 
       int requiredCount = macAddresses.length;
@@ -266,7 +354,8 @@ class _HomePageState extends State<HomePage> {
         child: Row(
           children: List.generate(categories.length, (index) {
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
+              padding:
+                  const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
               child: ElevatedButton.icon(
                 onPressed: () {},
                 icon: Icon(
@@ -301,6 +390,13 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     List<CategoryModel> categories = CategoryModel.getCategories();
     List<WiFiAccessPoint> wifiList = [];
+    // Kiểm tra lại directions khi build để hiển thị popup nếu cần
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (poiSelectionScreen.directions.isNotEmpty && !showDirectionsButton) {
+        _showDirectionsPopup();
+      }
+    });
+
     return Scaffold(
       backgroundColor: Color(0xffFFEBCD),
       bottomNavigationBar: _bottomNavBar(),
@@ -324,6 +420,18 @@ class _HomePageState extends State<HomePage> {
             right: 20,
             child: Column(
               children: [
+                // Nút hiển thị lại hướng dẫn chỉ đường
+                if (showDirectionsButton &&
+                    poiSelectionScreen.directions.isNotEmpty)
+                  FloatingActionButton(
+                    heroTag: "directions_button",
+                    onPressed: () {
+                      _showDirectionsPopup();
+                    },
+                    backgroundColor: Colors.green,
+                    child: Icon(Icons.directions, color: Colors.white),
+                  ),
+                SizedBox(height: 10),
                 FloatingActionButton(
                   heroTag: "location_button",
                   onPressed: () async {
@@ -354,13 +462,14 @@ class _HomePageState extends State<HomePage> {
                   backgroundColor: Colors.blue,
                   child: Icon(Icons.wifi, color: Colors.white),
                 ),
+                SizedBox(height: 10),
                 FloatingActionButton(
                   heroTag: "stop_tracking_button",
                   onPressed: () {
                     stopWifiTracking();
                   },
                   backgroundColor: Colors.red,
-                  child: Icon(Icons.wifi, color: Colors.white),
+                  child: Icon(Icons.wifi_off, color: Colors.white),
                 ),
               ],
             ),
@@ -390,6 +499,7 @@ class _HomePageState extends State<HomePage> {
             MaterialPageRoute(
               builder: (context) => SuggestedPlacesScreen(
                 poiSelectionScreen: poiSelectionScreen,
+                sourcePage: 'HomePage', // Truyền sourcePage
               ),
             ),
           );
@@ -401,7 +511,7 @@ class _HomePageState extends State<HomePage> {
               border: InputBorder.none,
               hintText: '   Tìm kiếm địa điểm ...',
               hintStyle:
-                  GoogleFonts.openSans(color: Colors.grey[00], fontSize: 18),
+                  GoogleFonts.openSans(color: Colors.grey[700], fontSize: 18),
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -447,7 +557,12 @@ class _HomePageState extends State<HomePage> {
           if (index == 1) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => InformationPage()),
+              MaterialPageRoute(
+                builder: (context) => InformationPage(
+                  poiSelectionScreen:
+                      poiSelectionScreen, // Truyền poiSelectionScreen
+                ),
+              ),
             );
           } else if (index == 2) {
             Navigator.push(
@@ -494,7 +609,8 @@ class _POISelectionScreenPageState extends State<POISelectionScreenPage> {
   void initState() {
     super.initState();
     poiSelectionScreen = POISelectionScreen(
-        userPositionCoordinates: widget.userPositionCoordinates, context: context);
+        userPositionCoordinates: widget.userPositionCoordinates,
+        context: context);
   }
 
   @override
