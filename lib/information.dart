@@ -429,11 +429,13 @@ Container _categoriesMethod() {
             child: Text(
               caption,
               style: GoogleFonts.openSans(fontSize: 14),
+              textAlign: TextAlign.start,
             ),
+            
           ),
           if (customImagePath != null && customImagePath.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
+              padding: const EdgeInsets.only(left: 16.0, right: 10.0, bottom: 16.0),
               child: ClipRRect(
                 borderRadius: const BorderRadius.all(Radius.circular(10)),
                 child: Image.file(
@@ -441,6 +443,7 @@ Container _categoriesMethod() {
                       fit: BoxFit.cover,
                       width: double.infinity,
                   height: 200,
+                  alignment: Alignment.center,
                 ),
               ),
             )
