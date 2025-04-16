@@ -8,7 +8,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_tts/flutter_tts.dart';
 
-
 class POISelectionScreen {
   final MapController mapController = MapController();
   double currentZoom = 20.0;
@@ -1198,5 +1197,17 @@ class POISelectionScreen {
           ),
       ],
     );
+  }
+
+  // Phương thức public để gọi _drawRoute từ bên ngoài
+  void callDrawRoute(BuildContext context, VoidCallback setStateCallback,
+      {required bool showDirections}) {
+    _drawRoute(context, setStateCallback, showDirections: showDirections);
+  }
+
+  // Phương thức public để gọi _drawRouteCD từ bên ngoài
+  void callDrawRouteCD(BuildContext context, VoidCallback setStateCallback,
+      {required bool showDirections}) {
+    _drawRouteCD(context, setStateCallback, showDirections: showDirections);
   }
 }
