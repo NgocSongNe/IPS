@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/POISelectionScreen.dart';
 
 class SuggestedPlacesScreen extends StatefulWidget {
-  final POISelectionScreen?
-      poiSelectionScreen; // Nhận POISelectionScreen từ HomePage
+  final POISelectionScreen? poiSelectionScreen; // Nhận POISelectionScreen từ HomePage
 
   const SuggestedPlacesScreen({super.key, this.poiSelectionScreen});
 
@@ -14,8 +13,7 @@ class SuggestedPlacesScreen extends StatefulWidget {
 class _SuggestedPlacesScreenState extends State<SuggestedPlacesScreen> {
   String? _startPOI; // Điểm đầu được chọn
   String? _endPOI; // Điểm cuối được chọn
-  List<Map<String, dynamic>> _poiList =
-      []; // Danh sách các POI từ POISelectionScreen
+  List<Map<String, dynamic>> _poiList = []; // Danh sách các POI từ POISelectionScreen
 
   @override
   void initState() {
@@ -34,7 +32,7 @@ class _SuggestedPlacesScreenState extends State<SuggestedPlacesScreen> {
       widget.poiSelectionScreen?.selectedMarkerRP = _startPOI;
       widget.poiSelectionScreen?.secondSelectedMarkerRP = _endPOI;
 
-// Gọi hàm vẽ đường đi từ POISelectionScreen
+      // Gọi hàm vẽ đường đi từ POISelectionScreen
       if (showDirections) {
         widget.poiSelectionScreen?.callDrawRouteCD(context, () {
           setState(() {});
@@ -73,8 +71,7 @@ class _SuggestedPlacesScreenState extends State<SuggestedPlacesScreen> {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                _buildLocationDropdown(
-                    'Chọn điểm đầu', Icons.location_on, true),
+                _buildLocationDropdown('Chọn điểm đầu', Icons.location_on, true),
                 const SizedBox(height: 10),
                 _buildLocationDropdown('Chọn điểm cuối', Icons.place, false),
                 const SizedBox(height: 20),
@@ -100,9 +97,7 @@ class _SuggestedPlacesScreenState extends State<SuggestedPlacesScreen> {
                     ElevatedButton.icon(
                       onPressed: () {
                         _drawRoute(showDirections: false); // Tìm đường
-                        _drawRoute(
-                            showDirections:
-                                true); // Vẽ đường đi và đọc hướng dẫn
+                        _drawRoute(showDirections: true); // Vẽ đường đi và đọc hướng dẫn
                       },
                       icon: const Icon(Icons.play_arrow, color: Colors.white),
                       label: const Text(
@@ -125,37 +120,16 @@ class _SuggestedPlacesScreenState extends State<SuggestedPlacesScreen> {
           const Padding(
             padding: EdgeInsets.all(16.0),
             child: Text(
-              'ĐIỂM GỢI Ý',
+              'BẢN ĐỒ',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              itemCount: suggestedPlaces.length,
-              itemBuilder: (context, index) {
-                final place = suggestedPlaces[index];
-                return ListTile(
-                  leading: ClipRRect(
-                    borderRadius: BorderRadius.circular(8.0),
-                    child: Image.asset(
-                      place['image']!,
-                      width: 50,
-                      height: 50,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  title: Text(place['name']!,
-                      style: const TextStyle(fontSize: 16)),
-                  subtitle: place['subtitle'] != null
-                      ? Text(place['subtitle']!,
-                          style: const TextStyle(color: Colors.grey))
-                      : null,
-                  onTap: () {
-                    // Thực hiện hành động khi nhấn vào địa điểm gợi ý (có thể tích hợp thêm)
-                  },
-                );
-              },
-            ),
+            child: widget.poiSelectionScreen != null
+                ? widget.poiSelectionScreen!.buildMapSection(context, () {
+                    setState(() {}); // Làm mới giao diện khi có thay đổi trên bản đồ
+                  })
+                : const Center(child: Text("Không thể tải bản đồ")),
           ),
         ],
       ),
@@ -198,8 +172,10 @@ class _SuggestedPlacesScreenState extends State<SuggestedPlacesScreen> {
                   setState(() {
                     if (isStartPoint) {
                       _startPOI = value;
+                      widget.poiSelectionScreen?.selectedMarkerRP = value; // Cập nhật điểm đầu
                     } else {
                       _endPOI = value;
+                      widget.poiSelectionScreen?.secondSelectedMarkerRP = value; // Cập nhật điểm cuối
                     }
                   });
                 },
@@ -211,29 +187,3 @@ class _SuggestedPlacesScreenState extends State<SuggestedPlacesScreen> {
     );
   }
 }
-
-final List<Map<String, String>> suggestedPlaces = [
-  {'image': '../assets/canteen.jpg', 'name': 'Căn tin trường'},
-  {
-    'image': '../assets/reading_area.jpg',
-    'name': 'Khu vực đọc',
-    'subtitle': 'Khu vực đọc 1'
-  },
-  {
-    'image': '../assets/magazine_room.jpg',
-    'name': 'Phòng tạp chí',
-    'subtitle': 'Phòng tạp chí 1'
-  },
-  {'image': '../assets/main_entrance.jpg', 'name': 'Cửa chính'},
-  {'image': '../assets/info_desk.jpg', 'name': 'Quầy thông tin'},
-  {
-    'image': '../assets/restroom.jpg',
-    'name': 'Phòng vệ sinh',
-    'subtitle': 'Phòng vệ sinh 1'
-  },
-  {
-    'image': '../assets/practice_room.jpg',
-    'name': 'Phòng thực hành',
-    'subtitle': 'Phòng thực hành 3&4'
-  },
-];
