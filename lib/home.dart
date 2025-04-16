@@ -29,20 +29,24 @@ class _HomePageState extends State<HomePage> {
   TextEditingController searchPlaceController = TextEditingController();
   int currentPageIndex = 0;
   bool showLabel = true;
-  List<CategoryModel> categories = [];
   List<MapModel> maps = [];
   bool _isDialogDismissed = false;
   PhotoViewComputedScale _photoViewScale = PhotoViewComputedScale.covered * 1;
   File? profileImage;
+
   late POISelectionScreen poiSelectionScreen;
+
   LatLng userPositionCoordinates = LatLng(11.95722012378790, 108.44507513707570); // Tọa độ mặc định cho người dùng
   String? selectedMarkerRP;
-      Timer? wifiScanTimer;
-        String? localhost = " 192.168.0.101";
+
+  Timer? wifiScanTimer;
+
+  List<CategoryModel> categories = CategoryModel.getCategories();
+  String? selectedCategory;
   @override
   void initState() {
     super.initState();
-    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: userPositionCoordinates,context: context,startWifiTracking:startWifiTracking,stopWifiTracking:stopWifiTracking);
+    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: userPositionCoordinates,selectedCategory: selectedCategory,context: context,startWifiTracking:startWifiTracking,stopWifiTracking:stopWifiTracking);
     getCategories();
     getMaps();
     
@@ -76,6 +80,7 @@ Future<void> stopWifiTracking() async {
   }
 
   void _showGuideDialog() {
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -124,7 +129,7 @@ Future<void> stopWifiTracking() async {
     );
   }
 Future<void> sendWiFiDataToServer() async {
-  final url = Uri.parse('http://192.168.0.101/predict'); // URL server Node.js
+  final url = Uri.parse('http://192.168.1.197/predict'); // URL server Node.js
 
   try {
     // Quét các mạng Wi-Fi xung quanh
@@ -218,7 +223,9 @@ Container _categoriesMethod() {
             padding: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
             child: ElevatedButton.icon(
               onPressed: () {
-                // Xử lý khi bấm vào category
+               setState(() {
+                    selectedCategory = categories[index].name; // Cập nhật category được chọn
+                  });
               },
               icon: Icon(
                 categories[index].icons.icon,  // Lấy icon từ category
@@ -438,7 +445,8 @@ class POISelectionScreenPage extends StatefulWidget {
   final LatLng userPositionCoordinates;  // Accept the user position coordinates
   final Function startWifiTracking;
   final Function stopWifiTracking;
-  POISelectionScreenPage({required this.userPositionCoordinates,context,required this.startWifiTracking,required this.stopWifiTracking});  // Constructor
+ final String? selectedCategory;
+  POISelectionScreenPage({required this.userPositionCoordinates,this.selectedCategory,context,required this.startWifiTracking,required this.stopWifiTracking});  // Constructor
 
   @override
   _POISelectionScreenPageState createState() => _POISelectionScreenPageState();
@@ -449,7 +457,7 @@ class _POISelectionScreenPageState extends State<POISelectionScreenPage> {
   @override
   void initState() {
     super.initState();
-    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: widget.userPositionCoordinates,context: context,startWifiTracking: widget.startWifiTracking,stopWifiTracking: widget.stopWifiTracking); // Initialize POISelectionScreen with user position coordinates
+    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: widget.userPositionCoordinates,selectedCategory: widget.selectedCategory,context: context,startWifiTracking: widget.startWifiTracking,stopWifiTracking: widget.stopWifiTracking); // Initialize POISelectionScreen with user position coordinates
   }
 
   @override

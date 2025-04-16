@@ -35,6 +35,9 @@ class POISelectionScreen {
   final FlutterTts _flutterTts = FlutterTts();
   final Function startWifiTracking;
   final Function stopWifiTracking;
+
+   final String? selectedCategory;
+
   final Map<String, String> rpToFolderMap = {
     "1": "tv3_4",
     "2": "cua_ra_vao",
@@ -79,7 +82,7 @@ class POISelectionScreen {
   };
 
   POISelectionScreen(
-    {required this.userPositionCoordinates, required this.context,required this.startWifiTracking, required this.stopWifiTracking}) {
+    {required this.userPositionCoordinates,  required this.selectedCategory,required this.context,required this.startWifiTracking, required this.stopWifiTracking}) {
     _loadWallsFromAPI();
     _loadPOIData();
     loadGeoJson().then((_) {
@@ -278,7 +281,7 @@ class POISelectionScreen {
     for (String endpoint in geoJsonEndpoints) {
       try {
         final response =
-            await http.get(Uri.parse("http://192.168.0.101:8675$endpoint"));
+            await http.get(Uri.parse("http://192.168.1.197:8765$endpoint"));
         if (response.statusCode == 200) {
           final geoJson = jsonDecode(response.body);
           if (geoJson['features'] is List) {
@@ -420,7 +423,7 @@ class POISelectionScreen {
   Future<void> _loadWallsFromAPI() async {
     try {
       final response =
-          await http.get(Uri.parse("http://192.168.0.101:8765/geojson/Paths"));
+          await http.get(Uri.parse("http://192.168.1.197:8765/geojson/Paths"));
       if (response.statusCode == 200) {
         final pathsJson = json.decode(response.body);
         walls = (pathsJson['features'] as List).map<List<LatLng>>((feature) {
@@ -440,7 +443,7 @@ class POISelectionScreen {
   Future<void> _loadPOIData() async {
     try {
       final response =
-          await http.get(Uri.parse("http://192.168.0.101:8765/geojson/POI"));
+          await http.get(Uri.parse("http://192.168.1.197:8765/geojson/POI"));
       if (response.statusCode == 200) {
         final poiJson = jsonDecode(response.body);
         // Lấy dữ liệu mô tả từ hàm getPOIDescriptions
@@ -450,11 +453,13 @@ class POISelectionScreen {
         for (var feature in poiJson['features']) {
           final properties = feature['properties'];
           final coordinates = feature['geometry']['coordinates'];
-
+          
+          String category = properties['Name'] ?? 'Unknown';
           String rp = properties['RP'] ?? 'unknown';
           String folderName = rpToFolderMap[rp] ?? 'unknown';
           List<String> images = await _getImagesFromFolder(folderName);
 
+             if (selectedCategory == null || selectedCategory == category) {
           var poi = {
             "name": properties['Name'] ?? 'Unknown',
             "rp": properties['RP'] ?? 'Unknown',
@@ -462,6 +467,7 @@ class POISelectionScreen {
             // Sử dụng mô tả từ getPOIDescriptions thay vì từ file geojson
             "description": poiDescriptions[rp] ?? 'Không có mô tả',
             "images": images,
+            "category": category,
           };
 
           print(
@@ -469,7 +475,7 @@ class POISelectionScreen {
 
           poiList.add(poi);
         }
-
+        }
         for (int i = 0; i < waypoints.length; i++) {
           poiList.add({
             "name": "Waypoint $i",
@@ -857,6 +863,8 @@ class POISelectionScreen {
       return;
     }
 
+    selectedMarkerRP = rp;  // Đánh dấu POI này là đã chọn
+  
     print(
         "POI tapped: ${poi['name']}, RP: ${poi['rp']}, Description: ${poi['description']}");
 
@@ -868,6 +876,7 @@ class POISelectionScreen {
       ),
       builder: (BuildContext context) {
         return Container(
+         
           height: MediaQuery.of(context).size.height * 0.5,
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -1065,8 +1074,10 @@ class POISelectionScreen {
                 if (currentZoom >= 20) ...poiList.map((poi) {
                   if (poi['rp'] == userPositionRP) return null;
                   if (poi['name'] == 'Cầu thang') return null;
-
+                  bool isSelectedCategory = selectedCategory != null && poi['Name'] == selectedCategory;
                   final isSelected = poi['rp'] == selectedMarkerRP || poi['rp'] == secondSelectedMarkerRP;
+                  Color markerColor = isSelectedCategory ? Colors.green : (isSelected ? Colors.blue : Colors.red);
+
                   return Marker(
                     point: poi['coordinates'] as LatLng,
                     width: isSelected ? 80.0 : 60.0,
@@ -1083,7 +1094,7 @@ class POISelectionScreen {
                           Container(
                             padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                             decoration: BoxDecoration(
-                              color: isSelected ? Colors.green.withOpacity(0.7) : Colors.white.withOpacity(0.7),
+                              color: isSelected ? Colors.green.withOpacity(0.7) : Colors.white.withOpacity(0.7) , // Màu xanh cho category được chọn
                               borderRadius: BorderRadius.circular(4.0),
                             ),
                             child: Text(
@@ -1098,7 +1109,7 @@ class POISelectionScreen {
                           if (isSelected)
                             Icon(
                               Icons.location_on,
-                              color: Colors.red,
+                               color: markerColor,
                               size: 30,
                             )
                           else
