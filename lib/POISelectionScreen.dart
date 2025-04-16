@@ -13,7 +13,7 @@ class POISelectionScreen {
   double currentZoom = 20.0;
   String? startPOI;
   String? endPOI;
-  LatLng userPositionCoordinates;
+  late LatLng userPositionCoordinates;
   double? pathDistance;
   List<Map<String, dynamic>> poiList = [];
   List<LatLng> selectedRoute = [];
@@ -23,7 +23,7 @@ class POISelectionScreen {
   List<List<LatLng>> hallways = [];
   List<LatLng> waypoints = [];
   final GeoJsonParser geoJsonParser = GeoJsonParser();
-
+ 
   String userPositionRP = "userPosition";
   List<String> directions = [];
   List<double> segmentDistances = [];
@@ -33,7 +33,8 @@ class POISelectionScreen {
 
   final BuildContext context;
   final FlutterTts _flutterTts = FlutterTts();
-
+  final Function startWifiTracking;
+  final Function stopWifiTracking;
   final Map<String, String> rpToFolderMap = {
     "1": "tv3_4",
     "2": "cua_ra_vao",
@@ -77,7 +78,8 @@ class POISelectionScreen {
     "40": "cau_thang_tang_2",
   };
 
-  POISelectionScreen({required this.userPositionCoordinates, required this.context}) {
+  POISelectionScreen(
+    {required this.userPositionCoordinates, required this.context,required this.startWifiTracking, required this.stopWifiTracking}) {
     _loadWallsFromAPI();
     _loadPOIData();
     loadGeoJson().then((_) {
@@ -92,6 +94,7 @@ class POISelectionScreen {
     await _flutterTts.setVolume(1.0);
     await _flutterTts.setPitch(1.0);
   }
+  
 
   Future<void> _speakDirections() async {
     if (directions.isEmpty) return;
@@ -275,7 +278,7 @@ class POISelectionScreen {
     for (String endpoint in geoJsonEndpoints) {
       try {
         final response =
-            await http.get(Uri.parse("http://10.10.67.83:8765$endpoint"));
+            await http.get(Uri.parse("http://192.168.0.101:8675$endpoint"));
         if (response.statusCode == 200) {
           final geoJson = jsonDecode(response.body);
           if (geoJson['features'] is List) {
@@ -371,7 +374,7 @@ class POISelectionScreen {
             }
           }
         }
-      }
+      } 
     }
   }
 
@@ -417,7 +420,7 @@ class POISelectionScreen {
   Future<void> _loadWallsFromAPI() async {
     try {
       final response =
-          await http.get(Uri.parse("http://localhost:8765/geojson/Paths"));
+          await http.get(Uri.parse("http://192.168.0.101:8765/geojson/Paths"));
       if (response.statusCode == 200) {
         final pathsJson = json.decode(response.body);
         walls = (pathsJson['features'] as List).map<List<LatLng>>((feature) {
@@ -437,7 +440,7 @@ class POISelectionScreen {
   Future<void> _loadPOIData() async {
     try {
       final response =
-          await http.get(Uri.parse("http://10.10.67.83:8765/geojson/POI"));
+          await http.get(Uri.parse("http://192.168.0.101:8765/geojson/POI"));
       if (response.statusCode == 200) {
         final poiJson = jsonDecode(response.body);
         // Lấy dữ liệu mô tả từ hàm getPOIDescriptions
@@ -838,6 +841,7 @@ class POISelectionScreen {
     }
   }
 
+
   void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
     var poi = poiList.firstWhere(
           (poi) => poi['rp'] == rp,
@@ -903,6 +907,7 @@ class POISelectionScreen {
                       _drawRouteCD(context, setStateCallback,
                           showDirections: true);
                       Navigator.of(context).pop();
+                      startWifiTracking();
                     },
                     icon: const Icon(Icons.play_arrow, color: Colors.white),
                     label: Text(
@@ -917,6 +922,7 @@ class POISelectionScreen {
                     ),
                   ),
                   const SizedBox(width: 10),
+                 
                   ElevatedButton.icon(
                     onPressed: () {
                       startPOI = userPositionRP;
@@ -1062,6 +1068,7 @@ class POISelectionScreen {
                         _onPOITap(poi['rp'] as String, context, setStateCallback);
                         setStateCallback();
                       },
+                      
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [

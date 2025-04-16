@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_application_1/Location.dart';
 import 'package:flutter_application_1/account.dart';
 import 'package:flutter_application_1/information.dart';
@@ -37,10 +38,11 @@ class _HomePageState extends State<HomePage> {
   LatLng userPositionCoordinates = LatLng(11.95722012378790, 108.44507513707570); // Tọa độ mặc định cho người dùng
   String? selectedMarkerRP;
       Timer? wifiScanTimer;
+        String? localhost = " 192.168.0.101";
   @override
   void initState() {
     super.initState();
-    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: userPositionCoordinates,context: context);
+    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: userPositionCoordinates,context: context,startWifiTracking:startWifiTracking,stopWifiTracking:stopWifiTracking);
     getCategories();
     getMaps();
     
@@ -51,9 +53,10 @@ class _HomePageState extends State<HomePage> {
 
 Future<void> startWifiTracking() async {
   // Bắt đầu quét Wi-Fi mỗi 5 giây
-  wifiScanTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
+  wifiScanTimer = Timer.periodic(Duration(seconds: 15), (timer) async {
     // Quét Wi-Fi và gửi dữ liệu
     await sendWiFiDataToServer();
+    print("✅ Đã quét Wi-Fi và gửi dữ liệu đến server");
   });
 }
 
@@ -121,7 +124,7 @@ Future<void> stopWifiTracking() async {
     );
   }
 Future<void> sendWiFiDataToServer() async {
-  final url = Uri.parse('http://10.10.67.83:8765/predict'); // URL server Node.js
+  final url = Uri.parse('http://192.168.0.101/predict'); // URL server Node.js
 
   try {
     // Quét các mạng Wi-Fi xung quanh
@@ -202,7 +205,6 @@ Future<void> sendWiFiDataToServer() async {
     print("❌ Lỗi khi quét và gửi dữ liệu Wi-Fi: $e");
   }
 }
-
 
 
 Container _categoriesMethod() {
@@ -309,23 +311,17 @@ Container _categoriesMethod() {
                 // ),
                
                 // Button để bắt đầu quét Wi-Fi
-FloatingActionButton(
-  heroTag: "wifi_tracking_button",
+               FloatingActionButton(
+  heroTag: "stop_wifi_button",
   onPressed: () {
-    startWifiTracking();
-  },
-  backgroundColor: Colors.blue,
-  child: Icon(Icons.wifi, color: Colors.white),
-),
-FloatingActionButton(
-  heroTag: "stop_tracking_button",
-  onPressed: () {
+    // Dừng quét Wi-Fi
     stopWifiTracking();
   },
   backgroundColor: Colors.red,
-  child: Icon(Icons.wifi, color: Colors.white),
+  child: Icon(Icons.stop, color: Colors.white),
 ),
-
+SizedBox(height: 10),
+               
               ],
             ),
           ),
@@ -440,8 +436,9 @@ FloatingActionButton(
 
 class POISelectionScreenPage extends StatefulWidget {
   final LatLng userPositionCoordinates;  // Accept the user position coordinates
-
-  POISelectionScreenPage({required this.userPositionCoordinates,context});  // Constructor
+  final Function startWifiTracking;
+  final Function stopWifiTracking;
+  POISelectionScreenPage({required this.userPositionCoordinates,context,required this.startWifiTracking,required this.stopWifiTracking});  // Constructor
 
   @override
   _POISelectionScreenPageState createState() => _POISelectionScreenPageState();
@@ -452,7 +449,7 @@ class _POISelectionScreenPageState extends State<POISelectionScreenPage> {
   @override
   void initState() {
     super.initState();
-    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: widget.userPositionCoordinates,context: context);
+    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: widget.userPositionCoordinates,context: context,startWifiTracking: widget.startWifiTracking,stopWifiTracking: widget.stopWifiTracking); // Initialize POISelectionScreen with user position coordinates
   }
 
   @override
