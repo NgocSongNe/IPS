@@ -43,60 +43,17 @@ class _HomePageState extends State<HomePage> {
     poiSelectionScreen = POISelectionScreen(userPositionCoordinates: userPositionCoordinates,context: context);
     getCategories();
     getMaps();
-    scanAndSendWiFiData(); 
+    
     requestPermissions();
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _showGuideDialog());
   }
-  Future<void> scanAndSendWiFiData() async {
-    try {
-      // Quét mạng Wi-Fi
-      List<WiFiAccessPoint> wifiList = await WifiScanner.scanWiFi();
-      
-      // Lấy các giá trị RSSI từ danh sách Wi-Fi
-      List<int> wifiData = wifiList.map((wifi) => wifi.level).toList();
 
-      // Gửi dữ liệu Wi-Fi lên server
-      final url = Uri.parse('https://trannguyenanhminh.click/predict'); // URL server
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'rssi': wifiData}),
-      );
-
-      if (response.statusCode == 200) {
-        print("✅ Dữ liệu đã được gửi thành công: ${response.body}");
-
-        // Xử lý dữ liệu trả về từ server
-        final responseData = jsonDecode(response.body);
-
-        // Lấy thông tin từ dữ liệu trả về
-        String name = responseData['name'];
-        List coordinates = responseData['coordinates'];
-        int rp = responseData['rp'];
-
-        // Cập nhật vị trí người dùng từ dự đoán của model
-        setState(() {
-          userPositionCoordinates = LatLng(coordinates[1], coordinates[0]); // Tọa độ từ dữ liệu trả về
-          // Cập nhật lại marker người dùng với tọa độ mới
-          selectedMarkerRP = rp.toString();
-            print("Updated User Position: $userPositionCoordinates"); 
-        });
-print("User Position: $userPositionCoordinates");
-        // Di chuyển bản đồ đến vị trí người dùng
-        poiSelectionScreen.mapController.move(userPositionCoordinates, 18);
-      } else {
-        print("❌ Gửi dữ liệu thất bại: ${response.statusCode}");
-      }
-    } catch (e) {
-      print("❌ Lỗi khi quét và gửi dữ liệu Wi-Fi: $e");
-    }
-  }
 Future<void> startWifiTracking() async {
   // Bắt đầu quét Wi-Fi mỗi 5 giây
   wifiScanTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
     // Quét Wi-Fi và gửi dữ liệu
-    await scanAndSendWiFiData();
+    await sendWiFiDataToServer();
   });
 }
 
@@ -164,7 +121,7 @@ Future<void> stopWifiTracking() async {
     );
   }
 Future<void> sendWiFiDataToServer() async {
-  final url = Uri.parse('https://trannguyenanhminh.click/predict'); // URL server Node.js
+  final url = Uri.parse('http://10.10.67.83:8765/predict'); // URL server Node.js
 
   try {
     // Quét các mạng Wi-Fi xung quanh
@@ -176,37 +133,34 @@ Future<void> sendWiFiDataToServer() async {
       return; // Nếu không có mạng, dừng hàm
     }
 
-    // Danh sách các địa chỉ MAC (số lượng MAC cố định)
+    // Danh sách các địa chỉ MAC cố định mà bạn muốn lấy dữ liệu RSSI
     List<String> macAddresses = [
-      "88:dc:97:12:62:cf", "8e:dc:97:12:65:63", "8e:dc:97:12:65:21", "8e:dc:97:12:65:64", "8e:dc:97:12:65:2b",
-            "88:dc:97:12:64:c4", "88:dc:97:12:62:c6", "8e:dc:97:12:62:cf", "b4:5d:50:d7:e9:51", "b4:5d:50:d7:e9:50",
-            "88:dc:97:12:62:c7", "8e:dc:97:12:65:22", "88:dc:97:12:65:57", "88:dc:97:12:64:82", "88:dc:97:12:64:83",
-            "8e:dc:97:12:62:c7", "8e:dc:97:12:62:c6", "8e:dc:97:12:64:82", "8e:dc:97:12:64:83", "88:dc:97:12:65:58",
-            "88:dc:97:12:65:2b", "88:dc:97:12:65:2a", "8e:dc:97:12:64:c4", "88:dc:97:12:62:d0", "b4:5d:50:d7:e9:40",
-            "8e:dc:97:12:65:2a", "8e:dc:97:12:62:d0", "88:dc:97:12:65:22", "88:dc:97:12:65:21", "8e:dc:97:12:65:58",
-            "8e:dc:97:12:65:57", "b4:5d:50:d7:e9:41", "88:dc:97:12:65:64", "88:dc:97:12:65:63", "88:dc:97:12:62:cc",
-            "8e:dc:97:12:62:cc", "88:dc:97:12:65:54", "8e:dc:97:12:65:54", "88:dc:97:12:65:55", "8e:dc:97:12:65:55",
-            "88:dc:97:12:62:ff", "8e:dc:97:12:62:ff", "68:ff:7b:d4:f1:cf", "88:dc:97:12:64:c5", "8e:dc:97:12:64:c5",
-            "8e:dc:97:12:62:cd", "88:dc:97:12:62:cd", "54:af:97:6b:ba:ce", "94:b4:0f:e3:1d:40", "94:b4:0f:e3:1d:41",
-            "40:e3:d6:cd:2d:21", "40:e3:d6:cd:2d:20", "94:b4:0f:e3:1d:51", "68:ff:7b:d4:f1:ce", "88:dc:97:12:63:00",
-            "40:e3:d6:cd:2d:31", "40:e3:d6:cd:2d:30", "8e:dc:97:12:63:00", "88:dc:97:12:64:4c", "8e:dc:97:12:5f:c9",
-            "18:64:72:55:12:90", "18:64:72:55:12:91", "94:b4:0f:e2:d0:b0", "8e:dc:97:12:64:4c", "94:b4:0f:e3:05:51",
-            "94:b4:0f:e3:1d:50", "94:b4:0f:e3:05:40", "18:64:72:55:12:81", "8e:dc:97:12:5f:cc", "18:64:72:55:12:80",
-            "94:b4:0f:e2:97:71", "94:b4:0f:e2:97:70"
+      "88:dc:97:12:62:cf", "8e:dc:97:12:65:63", "8e:dc:97:12:65:21", "8e:dc:97:12:65:64",
+      "8e:dc:97:12:65:2b", "88:dc:97:12:64:c4", "88:dc:97:12:62:c6", "8e:dc:97:12:62:cf",
+      "b4:5d:50:d7:e9:51", "b4:5d:50:d7:e9:50", "88:dc:97:12:62:c7", "8e:dc:97:12:65:22",
+      "88:dc:97:12:65:57", "88:dc:97:12:64:82", "88:dc:97:12:64:83", "8e:dc:97:12:62:c7",
+      "8e:dc:97:12:62:c6", "8e:dc:97:12:64:82", "8e:dc:97:12:64:83", "88:dc:97:12:65:58",
+      "88:dc:97:12:65:2b", "88:dc:97:12:65:2a", "8e:dc:97:12:64:c4", "88:dc:97:12:62:d0",
+      "b4:5d:50:d7:e9:40", "8e:dc:97:12:65:2a", "8e:dc:97:12:62:d0", "88:dc:97:12:65:22",
+      "88:dc:97:12:65:21", "8e:dc:97:12:65:58", "8e:dc:97:12:65:57", "b4:5d:50:d7:e9:41",
+      "88:dc:97:12:65:64", "88:dc:97:12:65:63"
     ];
 
-    // Lấy số lượng MAC cần quét (số lượng RSSI bạn cần)
-    int requiredCount = macAddresses.length;
-
-    // Nếu số mạng Wi-Fi quét được ít hơn số lượng MAC yêu cầu, sử dụng -100 cho những vị trí còn thiếu
-    List<int> wifiData = [];
-wifiData.clear();
-    for (int i = 0; i < requiredCount; i++) {
-      if (i < wifiNetworks.length) {
-        wifiData.add(wifiNetworks[i].level); // Lấy giá trị RSSI của mỗi mạng Wi-Fi
-      } else {
-        wifiData.add(-100); // Nếu không đủ mạng, gán -100
+      // Tạo một map MAC address với RSSI
+    Map<String, int> macToRssi = {};
+    // Duyệt qua các mạng Wi-Fi quét được và lưu RSSI vào map
+    for (var wifi in wifiNetworks) {
+      if (macAddresses.contains(wifi.bssid)) {
+        macToRssi[wifi.bssid] = wifi.level;  // Lưu RSSI của mạng Wi-Fi với MAC address
       }
+    }
+
+    // Xóa dữ liệu cũ và cập nhật lại danh sách RSSI
+    List<int> wifiData = [];
+  
+    // Cập nhật lại dữ liệu wifiData mỗi lần quét
+    for (var mac in macAddresses) {
+      wifiData.add(macToRssi[mac] ?? -100); // Nếu không có mạng, gán -100
     }
 
     // In ra mảng wifiData để kiểm tra các giá trị RSSI quét được
@@ -248,7 +202,6 @@ wifiData.clear();
     print("❌ Lỗi khi quét và gửi dữ liệu Wi-Fi: $e");
   }
 }
-
 
 
 
@@ -325,7 +278,7 @@ Container _categoriesMethod() {
                 FloatingActionButton(
                   heroTag: "location_button",
                  onPressed: () async {
-                    setState(() async {
+                    
                       
                       wifiList =
                     await WifiScanner.scanWiFi();
@@ -335,7 +288,7 @@ Container _categoriesMethod() {
                       }
                     }
                     await sendWiFiDataToServer();
-                    });
+                   
 
                     String? imagePath;
                     if (imagePath != null) {
