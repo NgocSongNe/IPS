@@ -7,6 +7,8 @@ import 'dart:math';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:sensors_plus/sensors_plus.dart'; // Thêm import này
+import 'dart:ui' as ui; // Import for Path and related classes with alias
 
 class POISelectionScreen {
   final MapController mapController = MapController();
@@ -33,6 +35,9 @@ class POISelectionScreen {
 
   final BuildContext context;
   final FlutterTts _flutterTts = FlutterTts();
+
+  // Biến để lưu trữ góc xoay từ cảm biến la bàn
+  double _compassHeading = 0.0;
 
   final Map<String, String> rpToFolderMap = {
     "1": "tv3_4",
@@ -85,6 +90,22 @@ class POISelectionScreen {
       WidgetsBinding.instance.addPostFrameCallback((_) => _focusOnPOIs());
     });
     _initTts();
+    _initCompass(); // Khởi tạo cảm biến la bàn
+  }
+
+  // Khởi tạo cảm biến la bàn
+  void _initCompass() {
+    magnetometerEvents.listen((MagnetometerEvent event) {
+      // Tính toán góc xoay từ cảm biến la bàn (theo trục Z)
+      double heading = atan2(event.y, event.x) * (180 / pi);
+      // Điều chỉnh góc để nằm trong khoảng 0-360 độ
+      if (heading < 0) {
+        heading += 360;
+      }
+      _compassHeading = heading;
+      // Cập nhật giao diện
+      (context as StatefulElement).markNeedsBuild();
+    });
   }
 
   Future<void> _initTts() async {
@@ -122,7 +143,6 @@ class POISelectionScreen {
     }
   }
 
-  // Hàm mới để lưu trữ thông tin mô tả của các POI
   Map<String, String> getPOIDescriptions() {
     return {
       "1": "Phòng máy tính TV3 và TV4.",
@@ -140,8 +160,6 @@ class POISelectionScreen {
       "13": "Khu vực có đầy đủ bàn ghế, ổ cắm điện, không gian yên tĩnh.",
       "14": "Khu vực có đầy đủ bàn ghế, ổ cắm điện, không gian yên tĩnh.",
       "15": "Khu vực có đầy đủ bàn ghế, ổ cắm điện, không gian yên tĩnh.",
-      // "16": "Hành lang di chuyển giữa các khu vực.",
-      // "17": "Hành lang di chuyển giữa các khu vực.",
       "18": "Khu vực có đầy đủ bàn ghế, ổ cắm điện, không gian yên tĩnh.",
       "19": "Cầu thang di chuyển.",
       "20": "Cầu thang di chuyển.",
@@ -446,7 +464,6 @@ class POISelectionScreen {
           .get(Uri.parse("https://trannguyenanhminh.click/geojson/POI"));
       if (response.statusCode == 200) {
         final poiJson = jsonDecode(response.body);
-        // Lấy dữ liệu mô tả từ hàm getPOIDescriptions
         final poiDescriptions = getPOIDescriptions();
 
         poiList = [];
@@ -462,7 +479,6 @@ class POISelectionScreen {
             "name": properties['Name'] ?? 'Unknown',
             "rp": properties['RP'] ?? 'Unknown',
             "coordinates": LatLng(coordinates[1], coordinates[0]),
-            // Sử dụng mô tả từ getPOIDescriptions thay vì từ file geojson
             "description": poiDescriptions[rp] ?? 'Không có mô tả',
             "images": images,
           };
@@ -795,11 +811,9 @@ class POISelectionScreen {
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.blue
-                    .withOpacity(opacity), // Đổi màu thành xanh dương
+                color: Colors.blue.withOpacity(opacity),
                 border: Border.all(
-                  color: Colors.blue.withOpacity(
-                      opacity * 0.5), // Đổi màu viền thành xanh dương
+                  color: Colors.blue.withOpacity(opacity * 0.5),
                   width: 1.0,
                 ),
               ),
@@ -960,13 +974,12 @@ class POISelectionScreen {
                   const SizedBox(width: 10),
                   ElevatedButton.icon(
                     onPressed: () {
-                      Navigator.of(context).pop(); // Đóng bottom sheet
+                      Navigator.of(context).pop();
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => InformationPage(
-                            poiName: poi[
-                                'name'], // Truyền tên địa điểm (poi['name']) vào InformationPage
+                            poiName: poi['name'],
                           ),
                         ),
                       );
@@ -1137,6 +1150,20 @@ class POISelectionScreen {
                       })
                       .whereType<Marker>()
                       .toList(),
+                // Marker cho vùng hình nón
+                Marker(
+                  point: userPositionCoordinates,
+                  width: 100.0,
+                  height: 100.0,
+                  child: Transform.rotate(
+                    angle: -_compassHeading * pi / 180, // Xoay theo góc la bàn
+                    child: CustomPaint(
+                      size: Size(100, 100),
+                      painter: ConePainter(),
+                    ),
+                  ),
+                ),
+                // Marker cho vị trí User
                 Marker(
                   point: userPositionCoordinates,
                   width: selectedMarkerRP == userPositionRP ? 80.0 : 60.0,
@@ -1210,4 +1237,40 @@ class POISelectionScreen {
       {required bool showDirections}) {
     _drawRouteCD(context, setStateCallback, showDirections: showDirections);
   }
+}
+
+// CustomPainter để vẽ vùng hình nón
+class ConePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.blue.withOpacity(0.5)
+      ..style = PaintingStyle.fill;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+    const coneAngle = 60 * pi / 180; // Góc của hình nón (60 độ)
+
+    // Vẽ hình nón
+    final path = ui.Path()
+      ..moveTo(center.dx, center.dy) // Đỉnh của hình nón
+      ..lineTo(
+        center.dx + radius * cos(-coneAngle / 2),
+        center.dy + radius * sin(-coneAngle / 2),
+      )
+      ..arcToPoint(
+        Offset(
+          center.dx + radius * cos(coneAngle / 2),
+          center.dy + radius * sin(coneAngle / 2),
+        ),
+        radius: ui.Radius.circular(radius),
+        clockwise: true,
+      )
+      ..close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
