@@ -324,17 +324,12 @@ class _InformationPageState extends State<InformationPage> {
           child: TextFormField(
             decoration: InputDecoration(
               border: InputBorder.none,
-              hintText: 'Tìm kiếm địa điểm ...',
+              hintText: '   Tìm kiếm địa điểm ...',
               hintStyle:
                   GoogleFonts.openSans(color: Colors.grey[700], fontSize: 18),
-              prefixIcon: Icon(Icons.gps_fixed, size: 25, color: Colors.black),
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    icon: Icon(Icons.mic, color: Colors.black),
-                    onPressed: () {},
-                  ),
                   IconButton(
                     icon: Icon(Icons.search, color: Colors.black),
                     onPressed: () {},
@@ -417,10 +412,10 @@ class _InformationPageState extends State<InformationPage> {
           children: [
             ListTile(
               leading: CircleAvatar(
-                backgroundImage: AssetImage('../assets/avt_st.jpg'),
+                backgroundImage: AssetImage('../assets/LibDLU.jpg'),
               ),
               title: Text(
-                'Tăng Thế Ngọc Song',
+                'Thư viện DLU',
                 style: GoogleFonts.openSans(fontWeight: FontWeight.bold),
               ),
             ),
@@ -701,10 +696,10 @@ class PostDetailPage extends StatelessWidget {
                     children: [
                       ListTile(
                         leading: CircleAvatar(
-                          backgroundImage: AssetImage('../assets/avt_st.jpg'),
+                          backgroundImage: AssetImage('../assets/LibDLU.jpg'),
                         ),
                         title: Text(
-                          'Tăng Thế Ngọc Song',
+                          'Thư viện DLU',
                           style: GoogleFonts.openSans(fontWeight: FontWeight.bold),
                         ),
                       ),
