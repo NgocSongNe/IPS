@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_application_1/Location.dart';
 import 'package:flutter_application_1/account.dart';
 import 'package:flutter_application_1/information.dart';
@@ -17,6 +18,8 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_application_1/ultils/permission.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Thêm import này
+
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 
@@ -30,90 +33,37 @@ class _HomePageState extends State<HomePage> {
   bool showLabel = true;
   List<CategoryModel> categories = [];
   List<MapModel> maps = [];
+
   bool _isDialogDismissed = false;
   PhotoViewComputedScale _photoViewScale = PhotoViewComputedScale.covered * 1;
   File? profileImage;
-  late POISelectionScreen poiSelectionScreen;
-  LatLng userPositionCoordinates = LatLng(11.95722012378790, 108.44507513707570);
-  String? selectedMarkerRP;
-  Timer? wifiScanTimer;
-  String? selectedCategory; // Thêm biến để lưu category được chọn
 
+  late POISelectionScreen poiSelectionScreen;
+
+  LatLng userPositionCoordinates = LatLng(11.95722012378790, 108.44507513707570); // Tọa độ mặc định cho người dùng
+  String? selectedMarkerRP;
+
+  Timer? wifiScanTimer;
+
+  String? selectedCategory;
   @override
   void initState() {
     super.initState();
-    poiSelectionScreen = POISelectionScreen(
-      userPositionCoordinates: userPositionCoordinates,
-      context: context,
-      selectedCategory: selectedCategory, // Truyền selectedCategory
-    );
+    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: userPositionCoordinates,selectedCategory: selectedCategory,context: context,startWifiTracking:startWifiTracking,stopWifiTracking:stopWifiTracking); // Initialize POISelectionScreen with user position coordinates
     getCategories();
     getMaps();
-    scanAndSendWiFiData();
+    
     requestPermissions();
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _showGuideDialog());
   }
 
-  // Cập nhật lại poiSelectionScreen khi selectedCategory thay đổi
-  void updatePOISelectionScreen() {
-    setState(() {
-      poiSelectionScreen = POISelectionScreen(
-        userPositionCoordinates: userPositionCoordinates,
-        context: context,
-        selectedCategory: selectedCategory,
-      );
-    });
-  }
-  Future<void> scanAndSendWiFiData() async {
-    try {
-      // Quét mạng Wi-Fi
-      List<WiFiAccessPoint> wifiList = await WifiScanner.scanWiFi();
-      
-      // Lấy các giá trị RSSI từ danh sách Wi-Fi
-      List<int> wifiData = wifiList.map((wifi) => wifi.level).toList();
-
-      // Gửi dữ liệu Wi-Fi lên server
-      final url = Uri.parse('https://trannguyenanhminh.click/predict'); // URL server
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'rssi': wifiData}),
-      );
-
-      if (response.statusCode == 200) {
-        print("✅ Dữ liệu đã được gửi thành công: ${response.body}");
-
-        // Xử lý dữ liệu trả về từ server
-        final responseData = jsonDecode(response.body);
-
-        // Lấy thông tin từ dữ liệu trả về
-        String name = responseData['name'];
-        List coordinates = responseData['coordinates'];
-        int rp = responseData['rp'];
-
-        // Cập nhật vị trí người dùng từ dự đoán của model
-        setState(() {
-          userPositionCoordinates = LatLng(coordinates[1], coordinates[0]); // Tọa độ từ dữ liệu trả về
-          // Cập nhật lại marker người dùng với tọa độ mới
-          selectedMarkerRP = rp.toString();
-            print("Updated User Position: $userPositionCoordinates"); 
-        });
-print("User Position: $userPositionCoordinates");
-        // Di chuyển bản đồ đến vị trí người dùng
-        poiSelectionScreen.mapController.move(userPositionCoordinates, 18);
-      } else {
-        print("❌ Gửi dữ liệu thất bại: ${response.statusCode}");
-      }
-    } catch (e) {
-      print("❌ Lỗi khi quét và gửi dữ liệu Wi-Fi: $e");
-    }
-  }
 Future<void> startWifiTracking() async {
   // Bắt đầu quét Wi-Fi mỗi 5 giây
-  wifiScanTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
+  wifiScanTimer = Timer.periodic(Duration(seconds: 15), (timer) async {
     // Quét Wi-Fi và gửi dữ liệu
-    await scanAndSendWiFiData();
+    await sendWiFiDataToServer();
+    print("✅ Đã quét Wi-Fi và gửi dữ liệu đến server");
   });
 }
 
@@ -133,6 +83,7 @@ Future<void> stopWifiTracking() async {
   }
 
   void _showGuideDialog() {
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -181,7 +132,7 @@ Future<void> stopWifiTracking() async {
     );
   }
 Future<void> sendWiFiDataToServer() async {
-  final url = Uri.parse('https://trannguyenanhminh.click/predict'); // URL server Node.js
+  final url = Uri.parse('http://192.168.0.102/predict'); // URL server Node.js
 
   try {
     // Quét các mạng Wi-Fi xung quanh
@@ -193,37 +144,34 @@ Future<void> sendWiFiDataToServer() async {
       return; // Nếu không có mạng, dừng hàm
     }
 
-    // Danh sách các địa chỉ MAC (số lượng MAC cố định)
+    // Danh sách các địa chỉ MAC cố định mà bạn muốn lấy dữ liệu RSSI
     List<String> macAddresses = [
-      "88:dc:97:12:62:cf", "8e:dc:97:12:65:63", "8e:dc:97:12:65:21", "8e:dc:97:12:65:64", "8e:dc:97:12:65:2b",
-            "88:dc:97:12:64:c4", "88:dc:97:12:62:c6", "8e:dc:97:12:62:cf", "b4:5d:50:d7:e9:51", "b4:5d:50:d7:e9:50",
-            "88:dc:97:12:62:c7", "8e:dc:97:12:65:22", "88:dc:97:12:65:57", "88:dc:97:12:64:82", "88:dc:97:12:64:83",
-            "8e:dc:97:12:62:c7", "8e:dc:97:12:62:c6", "8e:dc:97:12:64:82", "8e:dc:97:12:64:83", "88:dc:97:12:65:58",
-            "88:dc:97:12:65:2b", "88:dc:97:12:65:2a", "8e:dc:97:12:64:c4", "88:dc:97:12:62:d0", "b4:5d:50:d7:e9:40",
-            "8e:dc:97:12:65:2a", "8e:dc:97:12:62:d0", "88:dc:97:12:65:22", "88:dc:97:12:65:21", "8e:dc:97:12:65:58",
-            "8e:dc:97:12:65:57", "b4:5d:50:d7:e9:41", "88:dc:97:12:65:64", "88:dc:97:12:65:63", "88:dc:97:12:62:cc",
-            "8e:dc:97:12:62:cc", "88:dc:97:12:65:54", "8e:dc:97:12:65:54", "88:dc:97:12:65:55", "8e:dc:97:12:65:55",
-            "88:dc:97:12:62:ff", "8e:dc:97:12:62:ff", "68:ff:7b:d4:f1:cf", "88:dc:97:12:64:c5", "8e:dc:97:12:64:c5",
-            "8e:dc:97:12:62:cd", "88:dc:97:12:62:cd", "54:af:97:6b:ba:ce", "94:b4:0f:e3:1d:40", "94:b4:0f:e3:1d:41",
-            "40:e3:d6:cd:2d:21", "40:e3:d6:cd:2d:20", "94:b4:0f:e3:1d:51", "68:ff:7b:d4:f1:ce", "88:dc:97:12:63:00",
-            "40:e3:d6:cd:2d:31", "40:e3:d6:cd:2d:30", "8e:dc:97:12:63:00", "88:dc:97:12:64:4c", "8e:dc:97:12:5f:c9",
-            "18:64:72:55:12:90", "18:64:72:55:12:91", "94:b4:0f:e2:d0:b0", "8e:dc:97:12:64:4c", "94:b4:0f:e3:05:51",
-            "94:b4:0f:e3:1d:50", "94:b4:0f:e3:05:40", "18:64:72:55:12:81", "8e:dc:97:12:5f:cc", "18:64:72:55:12:80",
-            "94:b4:0f:e2:97:71", "94:b4:0f:e2:97:70"
+      "88:dc:97:12:62:cf", "8e:dc:97:12:65:63", "8e:dc:97:12:65:21", "8e:dc:97:12:65:64",
+      "8e:dc:97:12:65:2b", "88:dc:97:12:64:c4", "88:dc:97:12:62:c6", "8e:dc:97:12:62:cf",
+      "b4:5d:50:d7:e9:51", "b4:5d:50:d7:e9:50", "88:dc:97:12:62:c7", "8e:dc:97:12:65:22",
+      "88:dc:97:12:65:57", "88:dc:97:12:64:82", "88:dc:97:12:64:83", "8e:dc:97:12:62:c7",
+      "8e:dc:97:12:62:c6", "8e:dc:97:12:64:82", "8e:dc:97:12:64:83", "88:dc:97:12:65:58",
+      "88:dc:97:12:65:2b", "88:dc:97:12:65:2a", "8e:dc:97:12:64:c4", "88:dc:97:12:62:d0",
+      "b4:5d:50:d7:e9:40", "8e:dc:97:12:65:2a", "8e:dc:97:12:62:d0", "88:dc:97:12:65:22",
+      "88:dc:97:12:65:21", "8e:dc:97:12:65:58", "8e:dc:97:12:65:57", "b4:5d:50:d7:e9:41",
+      "88:dc:97:12:65:64", "88:dc:97:12:65:63"
     ];
 
-    // Lấy số lượng MAC cần quét (số lượng RSSI bạn cần)
-    int requiredCount = macAddresses.length;
-
-    // Nếu số mạng Wi-Fi quét được ít hơn số lượng MAC yêu cầu, sử dụng -100 cho những vị trí còn thiếu
-    List<int> wifiData = [];
-wifiData.clear();
-    for (int i = 0; i < requiredCount; i++) {
-      if (i < wifiNetworks.length) {
-        wifiData.add(wifiNetworks[i].level); // Lấy giá trị RSSI của mỗi mạng Wi-Fi
-      } else {
-        wifiData.add(-100); // Nếu không đủ mạng, gán -100
+      // Tạo một map MAC address với RSSI
+    Map<String, int> macToRssi = {};
+    // Duyệt qua các mạng Wi-Fi quét được và lưu RSSI vào map
+    for (var wifi in wifiNetworks) {
+      if (macAddresses.contains(wifi.bssid)) {
+        macToRssi[wifi.bssid] = wifi.level;  // Lưu RSSI của mạng Wi-Fi với MAC address
       }
+    }
+
+    // Xóa dữ liệu cũ và cập nhật lại danh sách RSSI
+    List<int> wifiData = [];
+  
+    // Cập nhật lại dữ liệu wifiData mỗi lần quét
+    for (var mac in macAddresses) {
+      wifiData.add(macToRssi[mac] ?? -100); // Nếu không có mạng, gán -100
     }
 
     // In ra mảng wifiData để kiểm tra các giá trị RSSI quét được
@@ -265,53 +213,50 @@ wifiData.clear();
     print("❌ Lỗi khi quét và gửi dữ liệu Wi-Fi: $e");
   }
 }
-
-
-
-
-Container _categoriesMethod() {
-    return Container(
-      height: 50,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: List.generate(categories.length, (index) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    selectedCategory = categories[index].name; // Cập nhật category được chọn
-                    updatePOISelectionScreen(); // Cập nhật lại POISelectionScreen
-                  });
-                },
-                icon: Icon(
-                  categories[index].icons.icon,
-                  color: Colors.green,
-                ),
-                label: Text(
-                  categories[index].name,
-                  style: GoogleFonts.openSans(
-                    fontWeight: FontWeight.w400,
-                    fontSize: 14,
-                    color: Colors.black,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color.fromARGB(255, 255, 255, 255),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  minimumSize: Size(100, 40),
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+Widget _categoriesMethod() {
+  return Container(
+    height: 50, // Set container height
+    child: SingleChildScrollView(  // Horizontal scrolling
+      scrollDirection: Axis.horizontal,  // Scroll horizontally
+      child: Row(
+        children: List.generate(categories.length, (index) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                setState(() {
+                    selectedCategory = categories[index].name;
+                    print('selectedCategory ${selectedCategory}');
+                    poiSelectionScreen.selectedCategory = selectedCategory;  // Cập nhật category được chọn
+                });
+              },
+              icon: Icon(
+                categories[index].icons.icon,  // Get category icon
+                color: Colors.green,
+              ),
+              label: Text(
+                categories[index].name,
+                style: GoogleFonts.openSans(
+                  fontWeight: FontWeight.w400,
+                  fontSize: 14,
+                  color: Colors.black,
                 ),
               ),
-            );
-          }),
-        ),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Color.fromARGB(255, 255, 255, 255),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                minimumSize: Size(100, 40),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              ),
+            ),
+          );
+        }),
       ),
-    );
-  }
+    ),
+  );
+}
 
 
   @override
@@ -345,7 +290,7 @@ Container _categoriesMethod() {
                 FloatingActionButton(
                   heroTag: "location_button",
                  onPressed: () async {
-                    setState(() async {
+                    
                       
                       wifiList =
                     await WifiScanner.scanWiFi();
@@ -355,7 +300,7 @@ Container _categoriesMethod() {
                       }
                     }
                     await sendWiFiDataToServer();
-                    });
+                   
 
                     String? imagePath;
                     if (imagePath != null) {
@@ -376,23 +321,17 @@ Container _categoriesMethod() {
                 // ),
                
                 // Button để bắt đầu quét Wi-Fi
-FloatingActionButton(
-  heroTag: "wifi_tracking_button",
+               FloatingActionButton(
+  heroTag: "stop_wifi_button",
   onPressed: () {
-    startWifiTracking();
-  },
-  backgroundColor: Colors.blue,
-  child: Icon(Icons.wifi, color: Colors.white),
-),
-FloatingActionButton(
-  heroTag: "stop_tracking_button",
-  onPressed: () {
+    // Dừng quét Wi-Fi
     stopWifiTracking();
   },
   backgroundColor: Colors.red,
-  child: Icon(Icons.wifi, color: Colors.white),
+  child: Icon(Icons.stop, color: Colors.white),
 ),
-
+SizedBox(height: 10),
+               
               ],
             ),
           ),
@@ -418,7 +357,11 @@ FloatingActionButton(
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => SuggestedPlacesScreen()),
+            MaterialPageRoute(
+              builder: (context) => SuggestedPlacesScreen(
+                poiSelectionScreen: poiSelectionScreen,
+              ),
+            ),
           );
         },
         child: AbsorbPointer(
@@ -506,10 +449,11 @@ FloatingActionButton(
 }
 
 class POISelectionScreenPage extends StatefulWidget {
-  final LatLng userPositionCoordinates;
-  final String? selectedCategory; // Thêm selectedCategory
-
-  POISelectionScreenPage({required this.userPositionCoordinates, this.selectedCategory, context});
+  final LatLng userPositionCoordinates;  // Accept the user position coordinates
+  final Function startWifiTracking;
+  final Function stopWifiTracking;
+String? selectedCategory;
+  POISelectionScreenPage({required this.userPositionCoordinates,this.selectedCategory,context,required this.startWifiTracking,required this.stopWifiTracking});  // Constructor
 
   @override
   _POISelectionScreenPageState createState() => _POISelectionScreenPageState();
@@ -520,11 +464,7 @@ class _POISelectionScreenPageState extends State<POISelectionScreenPage> {
   @override
   void initState() {
     super.initState();
-    poiSelectionScreen = POISelectionScreen(
-      userPositionCoordinates: widget.userPositionCoordinates,
-      context: context,
-      selectedCategory: widget.selectedCategory, // Truyền selectedCategory
-    );
+    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: widget.userPositionCoordinates,selectedCategory: widget.selectedCategory,context: context,startWifiTracking: widget.startWifiTracking,stopWifiTracking: widget.stopWifiTracking); // Initialize POISelectionScreen with user position coordinates
   }
 
   @override
@@ -541,7 +481,7 @@ class _POISelectionScreenPageState extends State<POISelectionScreenPage> {
                 style: TextStyle(fontSize: 16)),
           Expanded(
             child: poiSelectionScreen.buildMapSection(context, () {
-              setState(() {});
+              setState(() {});  // Notify parent to update the state
             }),
           ),
         ],

@@ -52,15 +52,22 @@ class CategoryModel {
     );
      categories.add(
       CategoryModel(
-        name: 'Phòng thí nghiệm',
+        name: 'TV3,4',
+        icons: Icon(Icons.science),
+        boxColor: Color(0xffE1E1E1)
+      )
+    );
+       categories.add(
+      CategoryModel(
+        name: 'Phòng tạp chí',
         icons: Icon(Icons.science),
         boxColor: Color(0xffE1E1E1)
       )
     );
      categories.add(
       CategoryModel(
-        name: 'Phòng máy tính',
-        icons: Icon(Icons.computer),
+        name: 'Hội trường thư viện',
+        icons: Icon(Icons.stadium),
         boxColor: Color(0xffE1E1E1)
       )
     );
