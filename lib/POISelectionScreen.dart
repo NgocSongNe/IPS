@@ -13,7 +13,7 @@ class POISelectionScreen {
   double currentZoom = 20.0;
   String? startPOI;
   String? endPOI;
-  late LatLng userPositionCoordinates;
+  LatLng userPositionCoordinates;
   double? pathDistance;
   List<Map<String, dynamic>> poiList = [];
   List<LatLng> selectedRoute = [];
@@ -955,7 +955,11 @@ class POISelectionScreen {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (context) => InformationPage()),
+                          builder: (context) => InformationPage(
+                            poiName: poi[
+                                'name'], // Truyền tên địa điểm (poi['name']) vào InformationPage
+                          ),
+                        ),
                       );
                     },
                     icon: const Icon(Icons.info, color: Colors.white),
