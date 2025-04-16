@@ -18,6 +18,8 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_application_1/ultils/permission.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Thêm import này
+
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 
@@ -355,7 +357,11 @@ SizedBox(height: 10),
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => SuggestedPlacesScreen()),
+            MaterialPageRoute(
+              builder: (context) => SuggestedPlacesScreen(
+                poiSelectionScreen: poiSelectionScreen,
+              ),
+            ),
           );
         },
         child: AbsorbPointer(

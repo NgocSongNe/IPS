@@ -8,6 +8,8 @@ import 'dart:math';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:sensors_plus/sensors_plus.dart'; // Thêm import này
+import 'dart:ui' as ui; // Import for Path and related classes with alias
 
 class POISelectionScreen {
   final MapController mapController = MapController();
@@ -34,7 +36,7 @@ class POISelectionScreen {
 
   final BuildContext context;
   final FlutterTts _flutterTts = FlutterTts();
-  
+   double _compassHeading = 0.0;
   final Function startWifiTracking;
   final Function stopWifiTracking;
 
@@ -112,11 +114,27 @@ String _getCategoryFromRP(String rp) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _focusOnPOIs());
     });
     _initTts();
+    _initCompass(); // Khởi tạo cảm biến la bàn
+  }
+
+  // Khởi tạo cảm biến la bàn
+  void _initCompass() {
+    magnetometerEvents.listen((MagnetometerEvent event) {
+      // Tính toán góc xoay từ cảm biến la bàn (theo trục Z)
+      double heading = atan2(event.y, event.x) * (180 / pi);
+      // Điều chỉnh góc để nằm trong khoảng 0-360 độ
+      if (heading < 0) {
+        heading += 360;
+      }
+      _compassHeading = heading;
+      // Cập nhật giao diện
+      (context as StatefulElement).markNeedsBuild();
+    });
   }
 
   Future<void> _initTts() async {
     await _flutterTts.setLanguage("vi-VN");
-    await _flutterTts.setSpeechRate(0.5);
+    await _flutterTts.setSpeechRate(1);
     await _flutterTts.setVolume(1.0);
     await _flutterTts.setPitch(1.0);
   }
@@ -330,6 +348,7 @@ String _getCategoryFromRP(String rp) {
                             color: Colors.black,
                             backgroundColor: Colors.white.withOpacity(0.7),
                           ),
+                          textAlign: TextAlign.center,
                         ),
                         Icon(
                           Icons.location_on,
@@ -348,12 +367,12 @@ String _getCategoryFromRP(String rp) {
 
                 Color fillColor;
                 if (endpoint == "/geojson/Room") {
-                  fillColor = Colors.blue.withOpacity(0.3);
+                  fillColor = Colors.blue.withOpacity(0.5);
                 } else if (endpoint == "/geojson/Wall") {
                   fillColor = Colors.grey.withOpacity(0.3);
                   walls.add(points);
                 } else if (endpoint == "/geojson/Hallways") {
-                  fillColor = Colors.green.withOpacity(0.3);
+                  fillColor = Colors.grey.withValues(alpha: 0.5);
                   hallways.add(points);
                   waypoints.addAll(points);
                 } else {
@@ -363,6 +382,7 @@ String _getCategoryFromRP(String rp) {
                 geoJsonParser.polygons.add(
                   Polygon(
                     points: points,
+                    isFilled: true,
                     color: fillColor,
                     borderColor: fillColor.withOpacity(0.8),
                     borderStrokeWidth: 2,
@@ -931,6 +951,7 @@ String _getCategoryFromRP(String rp) {
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -1005,8 +1026,7 @@ String _getCategoryFromRP(String rp) {
                         context,
                         MaterialPageRoute(
                           builder: (context) => InformationPage(
-                            poiName: poi[
-                                'name'], // Truyền tên địa điểm (poi['name']) vào InformationPage
+                            poiName: poi['name'], // Truyền tên địa điểm (poi['name']) vào InformationPage
                           ),
                         ),
                       );
@@ -1149,7 +1169,9 @@ String _getCategoryFromRP(String rp) {
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black,
                               ),
+                               textAlign: TextAlign.center,
                             ),
+                           
                           ),
                           if (isSelected)
                             Icon(
@@ -1178,24 +1200,43 @@ String _getCategoryFromRP(String rp) {
                       ),
                     ),
                   );
-                }).whereType<Marker>().toList(),
+                      })
+                      .whereType<Marker>()
+                      .toList(),
+                // Marker cho vùng hình nón
                 Marker(
                   point: userPositionCoordinates,
-                  width: selectedMarkerRP == userPositionRP ? 100.0 : 90.0,
-                  height: selectedMarkerRP == userPositionRP ? 100.0 : 90.0,
+                  width: 100.0,
+                  height: 100.0,
+                  child: Transform.rotate(
+                    angle: -_compassHeading * pi / 180, // Xoay theo góc la bàn
+                    child: CustomPaint(
+                      size: Size(100, 100),
+                      painter: ConePainter(),
+                    ),
+                  ),
+                ),
+                // Marker cho vị trí User
+                Marker(
+                  point: userPositionCoordinates,
+                  width: selectedMarkerRP == userPositionRP ? 80.0 : 60.0,
+                  height: selectedMarkerRP == userPositionRP ? 80.0 : 60.0,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 4.0, vertical: 2.0),
                         decoration: BoxDecoration(
-                          color: selectedMarkerRP == userPositionRP ? Colors.green.withOpacity(0.7) : Colors.white,
+                          color: selectedMarkerRP == userPositionRP
+                              ? Colors.green.withOpacity(0.7)
+                              : Colors.white,
                           borderRadius: BorderRadius.circular(4.0),
                         ),
                         child: Text(
                           "User",
                           style: TextStyle(
-                            fontSize: selectedMarkerRP == userPositionRP ? 25 : 20,
+                            fontSize: selectedMarkerRP == userPositionRP ? 15 : 15,
                             fontWeight: FontWeight.bold,
                             color: Colors.black,
                           ),
@@ -1204,7 +1245,7 @@ String _getCategoryFromRP(String rp) {
                       Icon(
                         Icons.person_pin_circle,
                         color: selectedMarkerRP == userPositionRP ? Colors.red : Colors.blue,
-                        size: 40,
+                        size: 30,
                       ),
                     ],
                   ),
@@ -1234,4 +1275,52 @@ String _getCategoryFromRP(String rp) {
       ],
     );
   }
+
+  // Phương thức public để gọi _drawRoute từ bên ngoài
+  void callDrawRoute(BuildContext context, VoidCallback setStateCallback,
+      {required bool showDirections}) {
+    _drawRoute(context, setStateCallback, showDirections: showDirections);
+  }
+
+  // Phương thức public để gọi _drawRouteCD từ bên ngoài
+  void callDrawRouteCD(BuildContext context, VoidCallback setStateCallback,
+      {required bool showDirections}) {
+    _drawRouteCD(context, setStateCallback, showDirections: showDirections);
+  }
+}
+
+// CustomPainter để vẽ vùng hình nón
+class ConePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.blue.withOpacity(0.5)
+      ..style = PaintingStyle.fill;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+    const coneAngle = 60 * pi / 180; // Góc của hình nón (60 độ)
+
+    // Vẽ hình nón
+    final path = ui.Path()
+      ..moveTo(center.dx, center.dy) // Đỉnh của hình nón
+      ..lineTo(
+        center.dx + radius * cos(-coneAngle / 2),
+        center.dy + radius * sin(-coneAngle / 2),
+      )
+      ..arcToPoint(
+        Offset(
+          center.dx + radius * cos(coneAngle / 2),
+          center.dy + radius * sin(coneAngle / 2),
+        ),
+        radius: ui.Radius.circular(radius),
+        clockwise: true,
+      )
+      ..close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

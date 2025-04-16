@@ -417,10 +417,10 @@ Container _categoriesMethod() {
         children: [
           ListTile(
             leading: CircleAvatar(
-              backgroundImage: AssetImage('../assets/avt_st.jpg'),
+                backgroundImage: AssetImage('../assets/LibDLU.jpg'),
             ),
             title: Text(
-              'Tăng Thế Ngọc Song',
+                'Thư viện DLU',
               style: GoogleFonts.openSans(fontWeight: FontWeight.bold),
             ),
           ),
@@ -702,10 +702,10 @@ class PostDetailPage extends StatelessWidget {
                     children: [
                       ListTile(
                         leading: CircleAvatar(
-                          backgroundImage: AssetImage('../assets/avt_st.jpg'),
+                          backgroundImage: AssetImage('../assets/LibDLU.jpg'),
                         ),
                         title: Text(
-                          'Tăng Thế Ngọc Song',
+                          'Thư viện DLU',
                           style: GoogleFonts.openSans(fontWeight: FontWeight.bold),
                         ),
                       ),

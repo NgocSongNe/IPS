@@ -41,7 +41,7 @@ class _WelcomePageState extends State<WelcomePage> {
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
-              width: MediaQuery.of(context).size.width,
+              width: 550,
               height: MediaQuery.of(context).size.height / 2.666,
               padding: EdgeInsets.only(top: 40, bottom: 30),
               decoration: BoxDecoration(
@@ -51,12 +51,15 @@ class _WelcomePageState extends State<WelcomePage> {
               child: Column(
                 children: [
                   Text(
+                   
                     "Thư viện Trường Đại học Đà Lạt kính chào",
                     style: GoogleFonts.openSans(
                       fontSize: 19,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 3,
+                    
                     ),
+                     textAlign: TextAlign.center,
                   ),
                   SizedBox(
                     height: 15,
