@@ -3,6 +3,7 @@ import 'package:flutter_application_1/information.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_geojson/flutter_map_geojson.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'dart:math';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -33,10 +34,11 @@ class POISelectionScreen {
 
   final BuildContext context;
   final FlutterTts _flutterTts = FlutterTts();
+  
   final Function startWifiTracking;
   final Function stopWifiTracking;
 
-   final String? selectedCategory;
+   String? selectedCategory;
 
   final Map<String, String> rpToFolderMap = {
     "1": "tv3_4",
@@ -80,6 +82,27 @@ class POISelectionScreen {
     "39": "phong_tap_chi",
     "40": "cau_thang_tang_2",
   };
+String _getCategoryFromRP(String rp) {
+  String folderName = rpToFolderMap[rp] ?? 'unknown';
+
+  // Định nghĩa các category theo folderName
+  Map<String, String> categoryMap = {
+    'tv3_4': 'TV3,4',
+    'hoi_truong_thu_vien': 'Hội trường thư viện',
+    'khu_vuc_doc': 'Khu vực đọc',
+    'can_tin': 'Căn tin',
+    'phong_tap_chi': 'Phòng tạp chí',
+    'ban_thu_thu': 'Kệ sách',
+    'khu_vuc_tu_hoc': 'Khu vực tự học',
+    'hanh_lang': 'Hành lang',
+    'cua_ra_vao': 'Cửa ra vào',
+    'cau_thang': 'Cầu thang',
+    'cau_thang_tang_2': 'Cầu thang tầng 2',
+  };
+
+  // Trả về category dựa trên folderName
+  return categoryMap[folderName] ?? 'Khác'; // Trả về 'Khác' nếu không có tên category
+}
 
   POISelectionScreen(
     {required this.userPositionCoordinates,  required this.selectedCategory,required this.context,required this.startWifiTracking, required this.stopWifiTracking}) {
@@ -281,7 +304,7 @@ class POISelectionScreen {
     for (String endpoint in geoJsonEndpoints) {
       try {
         final response =
-            await http.get(Uri.parse("http://192.168.1.197:8765$endpoint"));
+            await http.get(Uri.parse("http://192.168.0.102:8765$endpoint"));
         if (response.statusCode == 200) {
           final geoJson = jsonDecode(response.body);
           if (geoJson['features'] is List) {
@@ -423,7 +446,7 @@ class POISelectionScreen {
   Future<void> _loadWallsFromAPI() async {
     try {
       final response =
-          await http.get(Uri.parse("http://192.168.1.197:8765/geojson/Paths"));
+          await http.get(Uri.parse("http://192.168.0.102:8765/geojson/Paths"));
       if (response.statusCode == 200) {
         final pathsJson = json.decode(response.body);
         walls = (pathsJson['features'] as List).map<List<LatLng>>((feature) {
@@ -443,7 +466,7 @@ class POISelectionScreen {
   Future<void> _loadPOIData() async {
     try {
       final response =
-          await http.get(Uri.parse("http://192.168.1.197:8765/geojson/POI"));
+          await http.get(Uri.parse("http://192.168.0.102:8765/geojson/POI"));
       if (response.statusCode == 200) {
         final poiJson = jsonDecode(response.body);
         // Lấy dữ liệu mô tả từ hàm getPOIDescriptions
@@ -510,6 +533,7 @@ class POISelectionScreen {
     for (var poi in poiList) {
       String poiRP = poi["rp"];
       generatedGraph[poiRP] = [];
+      LatLng coordinates = poi["coordinates"];
     }
 
     for (var wp1 in poiList.where((poi) => poi["rp"].startsWith("wp_"))) {
@@ -583,6 +607,25 @@ class POISelectionScreen {
       }
     }
     return false;
+  }
+
+  bool _isPointInPolygon(LatLng point, List<LatLng> polygon) {
+    int j = polygon.length - 1;
+    bool inside = false;
+
+    for (int i = 0; i < polygon.length; i++) {
+      if (((polygon[i].latitude > point.latitude) !=
+              (polygon[j].latitude > point.latitude)) &&
+          (point.longitude <
+              (polygon[j].longitude - polygon[i].longitude) *
+                      (point.latitude - polygon[i].latitude) /
+                      (polygon[j].latitude - polygon[i].latitude) +
+                  polygon[i].longitude)) {
+        inside = !inside;
+      }
+      j = i;
+    }
+    return inside;
   }
 
   bool _doLinesIntersect(LatLng p1, LatLng q1, LatLng p2, LatLng q2) {
@@ -864,9 +907,6 @@ class POISelectionScreen {
     }
 
     selectedMarkerRP = rp;  // Đánh dấu POI này là đã chọn
-  
-    print(
-        "POI tapped: ${poi['name']}, RP: ${poi['rp']}, Description: ${poi['description']}");
 
     showModalBottomSheet(
       context: context,
@@ -1041,8 +1081,8 @@ class POISelectionScreen {
           options: MapOptions(
             center: userPositionCoordinates,
             zoom: currentZoom,
-            minZoom: 15.0,
-            maxZoom: 22.0,
+            minZoom: 17.0,
+            maxZoom: 23.0,
             interactiveFlags: InteractiveFlag.all,
             onPositionChanged: (position, hasGesture) {
               if (position.zoom != null) {
@@ -1073,15 +1113,16 @@ class POISelectionScreen {
               markers: [
                 if (currentZoom >= 20) ...poiList.map((poi) {
                   if (poi['rp'] == userPositionRP) return null;
+                  
                   if (poi['name'] == 'Cầu thang') return null;
-                  bool isSelectedCategory = selectedCategory != null && poi['Name'] == selectedCategory;
+                  final isHighlighted = selectedCategory != null && _getCategoryFromRP(poi['rp']) == selectedCategory;
+                  
                   final isSelected = poi['rp'] == selectedMarkerRP || poi['rp'] == secondSelectedMarkerRP;
-                  Color markerColor = isSelectedCategory ? Colors.green : (isSelected ? Colors.blue : Colors.red);
-
+                  final poiCategory = _getCategoryFromRP(poi['rp']); // Get category of POI
                   return Marker(
                     point: poi['coordinates'] as LatLng,
-                    width: isSelected ? 80.0 : 60.0,
-                    height: isSelected ? 80.0 : 60.0,
+                    width: isSelected ? 100.0 :  (isHighlighted ? 90.0 : 90.0),
+                    height: isSelected ? 100.0 : (isHighlighted ? 90.0 : 90.0),
                     child: GestureDetector(
                       onTap: () {
                         _onPOITap(poi['rp'] as String, context, setStateCallback);
@@ -1094,13 +1135,17 @@ class POISelectionScreen {
                           Container(
                             padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                             decoration: BoxDecoration(
-                              color: isSelected ? Colors.green.withOpacity(0.7) : Colors.white.withOpacity(0.7) , // Màu xanh cho category được chọn
+                               color: isSelected
+                ? Colors.green.withOpacity(0.7) // Green if selected
+                : isHighlighted
+                    ? Colors.blue.withOpacity(0.7) // Highlighted category POIs in blue
+                    : Colors.white.withOpacity(0.7), 
                               borderRadius: BorderRadius.circular(4.0),
                             ),
                             child: Text(
                               poi['name'] ?? "Unknown",
                               style: TextStyle(
-                                fontSize: isSelected ? 10 : 8,
+                                fontSize: isSelected ? 12 : 10,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black,
                               ),
@@ -1109,7 +1154,11 @@ class POISelectionScreen {
                           if (isSelected)
                             Icon(
                               Icons.location_on,
-                               color: markerColor,
+                               color: isSelected
+              ? Colors.green // Green if selected
+              : isHighlighted
+                  ? Colors.blue // Blue if highlighted by category
+                  : Colors.red, 
                               size: 30,
                             )
                           else
@@ -1130,11 +1179,10 @@ class POISelectionScreen {
                     ),
                   );
                 }).whereType<Marker>().toList(),
-
                 Marker(
                   point: userPositionCoordinates,
-                  width: selectedMarkerRP == userPositionRP ? 80.0 : 60.0,
-                  height: selectedMarkerRP == userPositionRP ? 80.0 : 60.0,
+                  width: selectedMarkerRP == userPositionRP ? 100.0 : 90.0,
+                  height: selectedMarkerRP == userPositionRP ? 100.0 : 90.0,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1147,7 +1195,7 @@ class POISelectionScreen {
                         child: Text(
                           "User",
                           style: TextStyle(
-                            fontSize: selectedMarkerRP == userPositionRP ? 12 : 10,
+                            fontSize: selectedMarkerRP == userPositionRP ? 25 : 20,
                             fontWeight: FontWeight.bold,
                             color: Colors.black,
                           ),
@@ -1156,7 +1204,7 @@ class POISelectionScreen {
                       Icon(
                         Icons.person_pin_circle,
                         color: selectedMarkerRP == userPositionRP ? Colors.red : Colors.blue,
-                        size: 32,
+                        size: 40,
                       ),
                     ],
                   ),

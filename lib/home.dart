@@ -29,7 +29,9 @@ class _HomePageState extends State<HomePage> {
   TextEditingController searchPlaceController = TextEditingController();
   int currentPageIndex = 0;
   bool showLabel = true;
+  List<CategoryModel> categories = [];
   List<MapModel> maps = [];
+
   bool _isDialogDismissed = false;
   PhotoViewComputedScale _photoViewScale = PhotoViewComputedScale.covered * 1;
   File? profileImage;
@@ -41,12 +43,11 @@ class _HomePageState extends State<HomePage> {
 
   Timer? wifiScanTimer;
 
-  List<CategoryModel> categories = CategoryModel.getCategories();
   String? selectedCategory;
   @override
   void initState() {
     super.initState();
-    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: userPositionCoordinates,selectedCategory: selectedCategory,context: context,startWifiTracking:startWifiTracking,stopWifiTracking:stopWifiTracking);
+    poiSelectionScreen = POISelectionScreen(userPositionCoordinates: userPositionCoordinates,selectedCategory: selectedCategory,context: context,startWifiTracking:startWifiTracking,stopWifiTracking:stopWifiTracking); // Initialize POISelectionScreen with user position coordinates
     getCategories();
     getMaps();
     
@@ -129,7 +130,7 @@ Future<void> stopWifiTracking() async {
     );
   }
 Future<void> sendWiFiDataToServer() async {
-  final url = Uri.parse('http://192.168.1.197/predict'); // URL server Node.js
+  final url = Uri.parse('http://192.168.0.102/predict'); // URL server Node.js
 
   try {
     // Quét các mạng Wi-Fi xung quanh
@@ -210,25 +211,25 @@ Future<void> sendWiFiDataToServer() async {
     print("❌ Lỗi khi quét và gửi dữ liệu Wi-Fi: $e");
   }
 }
-
-
-Container _categoriesMethod() {
+Widget _categoriesMethod() {
   return Container(
-    height: 50, // Đặt chiều cao cho container
-    child: SingleChildScrollView(  // Đảm bảo có thể cuộn ngang
-      scrollDirection: Axis.horizontal,  // Cuộn theo hướng ngang
+    height: 50, // Set container height
+    child: SingleChildScrollView(  // Horizontal scrolling
+      scrollDirection: Axis.horizontal,  // Scroll horizontally
       child: Row(
         children: List.generate(categories.length, (index) {
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
             child: ElevatedButton.icon(
               onPressed: () {
-               setState(() {
-                    selectedCategory = categories[index].name; // Cập nhật category được chọn
-                  });
+                setState(() {
+                    selectedCategory = categories[index].name;
+                    print('selectedCategory ${selectedCategory}');
+                    poiSelectionScreen.selectedCategory = selectedCategory;  // Cập nhật category được chọn
+                });
               },
               icon: Icon(
-                categories[index].icons.icon,  // Lấy icon từ category
+                categories[index].icons.icon,  // Get category icon
                 color: Colors.green,
               ),
               label: Text(
@@ -240,7 +241,7 @@ Container _categoriesMethod() {
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color.fromARGB(255, 255, 255, 255),
+                  backgroundColor: Color.fromARGB(255, 255, 255, 255),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -445,7 +446,7 @@ class POISelectionScreenPage extends StatefulWidget {
   final LatLng userPositionCoordinates;  // Accept the user position coordinates
   final Function startWifiTracking;
   final Function stopWifiTracking;
- final String? selectedCategory;
+String? selectedCategory;
   POISelectionScreenPage({required this.userPositionCoordinates,this.selectedCategory,context,required this.startWifiTracking,required this.stopWifiTracking});  // Constructor
 
   @override
