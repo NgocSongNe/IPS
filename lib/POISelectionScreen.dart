@@ -727,63 +727,102 @@ class POISelectionScreen {
       print("Start or end POI not found in the graph: start=$start, end=$end");
       return [];
     }
-
+// Theta*:
+    // Lưu chi phí từ điểm bắt đầu đến mỗi node
     final Map<String, double> gScore = {
       for (var node in graph.keys) node: double.infinity
     };
+    // Lưu chi phí ước lượng tổng (gScore + heuristic)
     final Map<String, double> fScore = {
       for (var node in graph.keys) node: double.infinity
     };
+    // Lưu node tổ tiên để tái tạo đường đi
     final Map<String, String?> cameFrom = {
       for (var node in graph.keys) node: null
     };
+    // Lưu node tổ tiên trực tiếp (dùng trong Theta* để kiểm tra line-of-sight)
+    final Map<String, String?> parent = {
+      for (var node in graph.keys) node: null
+    };
+    // Tập mở chứa các node cần khám phá
     final List<String> openSet = [start];
+    // Tập đóng chứa các node đã khám phá
     final Set<String> closedSet = {};
 
     gScore[start] = 0;
     fScore[start] = _heuristic(start, end);
+    parent[start] = null;
 
     while (openSet.isNotEmpty) {
+      // Chọn node có fScore nhỏ nhất
       openSet.sort((a, b) => fScore[a]!.compareTo(fScore[b]!));
       final current = openSet.removeAt(0);
 
       if (current == end) {
+        // Tái tạo đường đi
         final path = <String>[];
         String? temp = current;
         while (temp != null) {
           path.insert(0, temp);
-          temp = cameFrom[temp];
+          temp = parent[temp];
         }
         final route = path.map((rp) {
           return poiList.firstWhere((poi) => poi['rp'] == rp)['coordinates']
               as LatLng;
         }).toList();
-        print("Shortest path found: $path");
+        print("Shortest path found with Theta*: $path");
         print("Route coordinates: $route");
         return route;
       }
 
       closedSet.add(current);
 
+      // Kiểm tra các node láng giềng
       for (var neighbor in graph[current]!) {
         final neighborRP = neighbor['rp'];
         if (closedSet.contains(neighborRP)) continue;
 
-        final tentativeGScore = gScore[current]! + neighbor['distance'];
+        // Tìm tổ tiên của node hiện tại
+        String? currentParent = parent[current];
+        double tentativeGScore;
+        String? newParent;
+
+        if (currentParent != null) {
+          // Kiểm tra line-of-sight từ tổ tiên đến neighbor
+          final parentCoords = poiList.firstWhere(
+              (poi) => poi['rp'] == currentParent)['coordinates'] as LatLng;
+          final neighborCoords = poiList.firstWhere(
+              (poi) => poi['rp'] == neighborRP)['coordinates'] as LatLng;
+          if (!_isPathBlocked(parentCoords, neighborCoords)) {
+            // Nếu có line-of-sight, tính chi phí từ tổ tiên
+            tentativeGScore = gScore[currentParent]! +
+                _calculateDistance(parentCoords, neighborCoords);
+            newParent = currentParent;
+          } else {
+            // Nếu không có line-of-sight, tính chi phí từ node hiện tại
+            tentativeGScore = gScore[current]! + neighbor['distance'];
+            newParent = current;
+          }
+        } else {
+          // Nếu không có tổ tiên (node đầu tiên), tính chi phí từ node hiện tại
+          tentativeGScore = gScore[current]! + neighbor['distance'];
+          newParent = current;
+        }
 
         if (!openSet.contains(neighborRP)) {
           openSet.add(neighborRP);
-        } else if (tentativeGScore >= gScore[neighborRP]!) {
-          continue;
         }
 
-        cameFrom[neighborRP] = current;
-        gScore[neighborRP] = tentativeGScore;
-        fScore[neighborRP] = gScore[neighborRP]! + _heuristic(neighborRP, end);
+        if (tentativeGScore < gScore[neighborRP]!) {
+          // Cập nhật thông tin nếu tìm thấy đường đi tốt hơn
+          parent[neighborRP] = newParent;
+          gScore[neighborRP] = tentativeGScore;
+          fScore[neighborRP] = tentativeGScore + _heuristic(neighborRP, end);
+        }
       }
     }
 
-    print("No path found from $start to $end");
+    print("No path found from $start to $end with Theta*");
     return [];
   }
 

@@ -294,7 +294,7 @@ class _InformationPageState extends State<InformationPage> {
           children: [
             _searchField(),
             SizedBox(height: 20),
-            _categoriesMethod(),
+            // _categoriesMethod(),
             SizedBox(height: 20),
             _buildPostCards(),
           ],
@@ -340,7 +340,7 @@ class _InformationPageState extends State<InformationPage> {
           child: TextFormField(
             decoration: InputDecoration(
               border: InputBorder.none,
-              hintText: '    Tìm kiếm địa điểm ...',
+              hintText: '     Tìm kiếm địa điểm ...',
               hintStyle:
                   GoogleFonts.openSans(color: Colors.grey[700], fontSize: 18),
               suffixIcon: Row(
@@ -359,42 +359,42 @@ class _InformationPageState extends State<InformationPage> {
     );
   }
 
-  Container _categoriesMethod() {
-    return Container(
-      height: 50,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: List.generate(categories.length, (index) {
-            return Padding(
-              padding:
-                  const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
-              child: ElevatedButton.icon(
-                onPressed: () {},
-                icon: categories[index].icons,
-                label: Text(
-                  categories[index].name,
-                  style: GoogleFonts.openSans(
-                    fontWeight: FontWeight.w400,
-                    fontSize: 14,
-                    color: Colors.black,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color.fromARGB(255, 255, 255, 255),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  minimumSize: Size(100, 40),
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                ),
-              ),
-            );
-          }),
-        ),
-      ),
-    );
-  }
+  // Container _categoriesMethod() {
+  //   return Container(
+  //     height: 50,
+  //     child: SingleChildScrollView(
+  //       scrollDirection: Axis.horizontal,
+  //       child: Row(
+  //         children: List.generate(categories.length, (index) {
+  //           return Padding(
+  //             padding:
+  //                 const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
+  //             child: ElevatedButton.icon(
+  //               onPressed: () {},
+  //               icon: categories[index].icons,
+  //               label: Text(
+  //                 categories[index].name,
+  //                 style: GoogleFonts.openSans(
+  //                   fontWeight: FontWeight.w400,
+  //                   fontSize: 14,
+  //                   color: Colors.black,
+  //                 ),
+  //               ),
+  //               style: ElevatedButton.styleFrom(
+  //                 backgroundColor: Color.fromARGB(255, 255, 255, 255),
+  //                 shape: RoundedRectangleBorder(
+  //                   borderRadius: BorderRadius.circular(10),
+  //                 ),
+  //                 minimumSize: Size(100, 40),
+  //                 padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+  //               ),
+  //             ),
+  //           );
+  //         }),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildPostCards() {
     return Column(
