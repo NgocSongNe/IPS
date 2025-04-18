@@ -1,8 +1,8 @@
 {
-"type": "FeatureCollection",
-"name": "POI",
-"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
-"features": [
+  "type": "FeatureCollection",
+  "name": "POI",
+  "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+  "features": [
     { "type": "Feature", "properties": { "fid": 1, "Floor": "1", "RP": "1", "Name": "TV3,4", "Description": "Phòng máy tính TV3 và TV4.", "xy": [0.0, 0.0] }, "geometry": { "type": "Point", "coordinates": [ 108.4451276943349, 11.957103446948263 ] } },
     { "type": "Feature", "properties": { "fid": 2, "Floor": "1", "RP": "2", "Name": "Cửa ra vào", "Description": "Cửa ra vào thư viện", "xy": [5.0, 0.0] }, "geometry": { "type": "Point", "coordinates": [ 108.44507513707596, 11.95722012378778 ] } },
     { "type": "Feature", "properties": { "fid": 3, "Floor": "1", "RP": "3", "Name": "Hội trường thư viện", "Description": "Phòng Hội trường thư viện, không gian rộng lớn, hiện đại.", "xy": [9.5, 0.0] }, "geometry": { "type": "Point", "coordinates": [ 108.445010451218806, 11.957369760112835 ] } },
@@ -43,5 +43,5 @@
     { "type": "Feature", "properties": { "fid": 38, "Floor": "1", "RP": "38", "Name": "Khu vực tự học", "Description": "Khu vực có đầy đủ bàn ghế, ổ cắm điện, không gian yên tĩnh.", "xy": [7.5, 7.0] }, "geometry": { "type": "Point", "coordinates": [ 108.444864908040202, 11.957194744931497 ] } },
     { "type": "Feature", "properties": { "fid": 39, "Floor": "1", "RP": "39", "Name": "Phòng tạp chí", "Description": "Phòng lưu trữ tạp chí và nhiều sách đa dạng thể loại.", "xy": [8.0, 7.0] }, "geometry": { "type": "Point", "coordinates": [ 108.444854127064005, 11.957220453383307 ] } },
     { "type": "Feature", "properties": { "fid": 40, "Floor": "1", "RP": "40", "Name": "Cầu thang tầng 2", "Description": "Cầu thang dẫn lên tầng 2", "xy": [8.5, 7.0] }, "geometry": { "type": "Point", "coordinates": [ 108.444848062764891, 11.957236933158825 ] } }
-]
+  ]
 }

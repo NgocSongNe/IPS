@@ -132,7 +132,7 @@ Future<void> stopWifiTracking() async {
     );
   }
 Future<void> sendWiFiDataToServer() async {
-  final url = Uri.parse('http://192.168.0.102/predict'); // URL server Node.js
+  final url = Uri.parse('http://192.168.1.5/predict'); // URL server Node.js
 
   try {
     // Quét các mạng Wi-Fi xung quanh
@@ -439,10 +439,7 @@ SizedBox(height: 10),
           icon: Badge(child: Icon(Icons.book_online_outlined)),
           label: 'Thông tin',
         ),
-        NavigationDestination(
-          icon: Badge(child: Icon(Icons.manage_accounts_outlined)),
-          label: 'Tài khoản',
-        ),
+        
       ],
     );
   }

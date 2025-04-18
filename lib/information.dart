@@ -417,7 +417,8 @@ Container _categoriesMethod() {
         children: [
           ListTile(
             leading: CircleAvatar(
-                backgroundImage: AssetImage('../assets/LibDLU.jpg'),
+                backgroundImage: AssetImage('../assets/images/LibDLU.jpg'),
+              radius: 25,
             ),
             title: Text(
                 'Thư viện DLU',
@@ -494,20 +495,20 @@ Container _categoriesMethod() {
       );
     }
 
-    // Bọc toàn bộ khối hình ảnh trong ClipRRect để bo tròn viền
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(5),
-      child: Container(
-        width: collageWidth,
-        height: collageHeight,
-        color: Colors.white,
+
+  return ClipRRect(
+    borderRadius: BorderRadius.circular(5),
+    child: Container(
+      width: collageWidth,
+      height: collageHeight,
+      color: Colors.white,
         child: images.length == 1
             ? buildImage(
-                images[0],
-                width: collageWidth,
-                height: collageHeight,
+                    images[0],
+                    width: collageWidth,
+                    height: collageHeight,
               )
-            : images.length == 2
+              : images.length == 2
                 ? Row(
                     mainAxisSize: MainAxisSize.max,
                     children: [
@@ -524,7 +525,7 @@ Container _categoriesMethod() {
                       ),
                     ],
                   )
-                : images.length == 3
+                  : images.length == 3
                     ? Row(
                         mainAxisSize: MainAxisSize.max,
                         children: [
@@ -609,10 +610,10 @@ Container _categoriesMethod() {
                             ],
                           ),
                         ],
-                      ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   NavigationBar _bottomNavBar() {
     return NavigationBar(
