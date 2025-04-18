@@ -11,7 +11,7 @@ import 'Location.dart';
 
 class InformationPage extends StatefulWidget {
   final String? poiName; // Tham số để nhận tên địa điểm từ trang Home
-final POISelectionScreen?
+  final POISelectionScreen?
       poiSelectionScreen; // Nhận poiSelectionScreen từ HomePage
 
   const InformationPage({super.key, this.poiName, this.poiSelectionScreen});
@@ -44,7 +44,7 @@ class _InformationPageState extends State<InformationPage> {
   @override
   void initState() {
     super.initState();
-     getCategories();
+    getCategories();
 
     // Khởi tạo các bài đăng và ánh xạ với folderName
     postCards = [
@@ -340,17 +340,12 @@ class _InformationPageState extends State<InformationPage> {
           child: TextFormField(
             decoration: InputDecoration(
               border: InputBorder.none,
-              hintText: 'Tìm kiếm địa điểm ...',
+              hintText: '    Tìm kiếm địa điểm ...',
               hintStyle:
                   GoogleFonts.openSans(color: Colors.grey[700], fontSize: 18),
-              prefixIcon: Icon(Icons.gps_fixed, size: 25, color: Colors.black),
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    icon: Icon(Icons.mic, color: Colors.black),
-                    onPressed: () {},
-                  ),
                   IconButton(
                     icon: Icon(Icons.search, color: Colors.black),
                     onPressed: () {},
@@ -364,42 +359,42 @@ class _InformationPageState extends State<InformationPage> {
     );
   }
 
-Container _categoriesMethod() {
-  return Container(
+  Container _categoriesMethod() {
+    return Container(
       height: 50,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-      child: Row(
-        children: List.generate(categories.length, (index) {
-          return Padding(
+        child: Row(
+          children: List.generate(categories.length, (index) {
+            return Padding(
               padding:
                   const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
-            child: ElevatedButton.icon(
+              child: ElevatedButton.icon(
                 onPressed: () {},
-              icon: categories[index].icons,
-              label: Text(
-                categories[index].name,
-                style: GoogleFonts.openSans(
-                  fontWeight: FontWeight.w400,
-                  fontSize: 14,
-                  color: Colors.black,
+                icon: categories[index].icons,
+                label: Text(
+                  categories[index].name,
+                  style: GoogleFonts.openSans(
+                    fontWeight: FontWeight.w400,
+                    fontSize: 14,
+                    color: Colors.black,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color.fromARGB(255, 255, 255, 255),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  minimumSize: Size(100, 40),
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 ),
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color.fromARGB(255, 255, 255, 255),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                minimumSize: Size(100, 40),
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              ),
-            ),
-          );
-        }),
+            );
+          }),
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildPostCards() {
     return Column(
@@ -426,59 +421,64 @@ Container _categoriesMethod() {
         );
       },
       child: Card(
-      margin: const EdgeInsets.all(12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ListTile(
-            leading: CircleAvatar(
-                backgroundImage: AssetImage('../assets/LibDLU.jpg'),
-            ),
-            title: Text(
+        margin: const EdgeInsets.all(12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              leading: CircleAvatar(
+                backgroundImage: AssetImage('../assets/images/LibDLU.jpg'),
+              ),
+              title: Text(
                 'Thư viện DLU',
-              style: GoogleFonts.openSans(fontWeight: FontWeight.bold),
+                style: GoogleFonts.openSans(fontWeight: FontWeight.bold),
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 10.0),
-            child: Text(
-              caption,
-              style: GoogleFonts.openSans(fontSize: 14),
-            ),
-          ),
-          if (customImagePath != null && customImagePath.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
-              child: ClipRRect(
-                borderRadius: const BorderRadius.all(Radius.circular(10)),
-                child: Image.file(
-                  File(customImagePath),
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                  height: 200,
+              padding:
+                  const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 10.0),
+              child: Text(
+                caption,
+                style: GoogleFonts.openSans(fontSize: 14),
+              ),
+            ),
+            if (customImagePath != null && customImagePath.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(
+                    left: 16.0, right: 16.0, bottom: 16.0),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.all(Radius.circular(10)),
+                  child: Image.file(
+                    File(customImagePath),
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: 200,
+                  ),
+                ),
+              )
+            else if (folderName.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(
+                    left: 16.0, right: 16.0, bottom: 16.0),
+                child: FutureBuilder<List<String>>(
+                  future: _getImagesFromFolder(folderName),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(child: CircularProgressIndicator());
+                    } else if (snapshot.hasError ||
+                        !snapshot.hasData ||
+                        snapshot.data!.isEmpty) {
+                      return Center(child: Text("Không có hình ảnh"));
+                    } else {
+                      final images = snapshot.data!;
+                      return _buildImageCollage(images);
+                    }
+                  },
                 ),
               ),
-            )
-          else if (folderName.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
-              child: FutureBuilder<List<String>>(
-                future: _getImagesFromFolder(folderName),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  } else if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                    return Center(child: Text("Không có hình ảnh"));
-                  } else {
-                    final images = snapshot.data!;
-                    return _buildImageCollage(images);
-                  }
-                },
-                    ),
-            ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -488,7 +488,8 @@ Container _categoriesMethod() {
     const double collageHeight = 200;
     const double gap = 2.0;
 
-    Widget buildImage(String imagePath, {required double width, required double height}) {
+    Widget buildImage(String imagePath,
+        {required double width, required double height}) {
       return Image.asset(
         imagePath,
         width: width,
@@ -507,20 +508,19 @@ Container _categoriesMethod() {
       );
     }
 
-
-  return ClipRRect(
-    borderRadius: BorderRadius.circular(5),
-    child: Container(
-      width: collageWidth,
-      height: collageHeight,
-      color: Colors.white,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(5),
+      child: Container(
+        width: collageWidth,
+        height: collageHeight,
+        color: Colors.white,
         child: images.length == 1
             ? buildImage(
-                    images[0],
-                    width: collageWidth,
-                    height: collageHeight,
+                images[0],
+                width: collageWidth,
+                height: collageHeight,
               )
-              : images.length == 2
+            : images.length == 2
                 ? Row(
                     mainAxisSize: MainAxisSize.max,
                     children: [
@@ -537,7 +537,7 @@ Container _categoriesMethod() {
                       ),
                     ],
                   )
-                  : images.length == 3
+                : images.length == 3
                     ? Row(
                         mainAxisSize: MainAxisSize.max,
                         children: [
@@ -622,10 +622,10 @@ Container _categoriesMethod() {
                             ],
                           ),
                         ],
+                      ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   NavigationBar _bottomNavBar() {
     return NavigationBar(
@@ -659,12 +659,6 @@ Container _categoriesMethod() {
           icon: Badge(child: Icon(Icons.book_online_outlined)),
           label: 'Thông tin',
         ),
-        NavigationDestination(
-          icon: Badge(
-            child: Icon(Icons.manage_accounts_outlined),
-          ),
-          label: 'Tài khoản',
-        ),
       ],
     );
   }
@@ -682,7 +676,8 @@ class PostDetailPage extends StatelessWidget {
     this.customImagePath,
   }) : super(key: key);
 
-  Future<List<String>> _getImagesFromFolder(BuildContext context, String folderName) async {
+  Future<List<String>> _getImagesFromFolder(
+      BuildContext context, String folderName) async {
     try {
       final manifestContent =
           await DefaultAssetBundle.of(context).loadString('AssetManifest.json');
@@ -709,29 +704,35 @@ class PostDetailPage extends StatelessWidget {
               child: SingleChildScrollView(
                 child: Card(
                   margin: const EdgeInsets.all(12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ListTile(
                         leading: CircleAvatar(
-                          backgroundImage: AssetImage('../assets/LibDLU.jpg'),
+                          backgroundImage:
+                              AssetImage('../assets/images/LibDLU.jpg'),
                         ),
                         title: Text(
                           'Thư viện DLU',
-                          style: GoogleFonts.openSans(fontWeight: FontWeight.bold),
+                          style:
+                              GoogleFonts.openSans(fontWeight: FontWeight.bold),
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 10.0),
+                        padding: const EdgeInsets.only(
+                            left: 16.0, right: 16.0, bottom: 10.0),
                         child: Text(
                           caption,
                           style: GoogleFonts.openSans(fontSize: 14),
                         ),
                       ),
-                      if (customImagePath != null && customImagePath!.isNotEmpty)
+                      if (customImagePath != null &&
+                          customImagePath!.isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
+                          padding: const EdgeInsets.only(
+                              left: 16.0, right: 16.0, bottom: 16.0),
                           child: GestureDetector(
                             onTap: () {
                               Navigator.push(
@@ -746,7 +747,8 @@ class PostDetailPage extends StatelessWidget {
                               );
                             },
                             child: ClipRRect(
-                              borderRadius: const BorderRadius.all(Radius.circular(10)),
+                              borderRadius:
+                                  const BorderRadius.all(Radius.circular(10)),
                               child: Image.file(
                                 File(customImagePath!),
                                 fit: BoxFit.cover,
@@ -760,9 +762,12 @@ class PostDetailPage extends StatelessWidget {
                         FutureBuilder<List<String>>(
                           future: _getImagesFromFolder(context, folderName),
                           builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
                               return Center(child: CircularProgressIndicator());
-                            } else if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                            } else if (snapshot.hasError ||
+                                !snapshot.hasData ||
+                                snapshot.data!.isEmpty) {
                               return Center(child: Text("Không có hình ảnh"));
                             } else {
                               final images = snapshot.data!;
@@ -772,13 +777,15 @@ class PostDetailPage extends StatelessWidget {
                                 itemCount: images.length,
                                 itemBuilder: (context, index) {
                                   return Padding(
-                                    padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
+                                    padding: const EdgeInsets.only(
+                                        left: 16.0, right: 16.0, bottom: 16.0),
                                     child: GestureDetector(
                                       onTap: () {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) => FullScreenImagePage(
+                                            builder: (context) =>
+                                                FullScreenImagePage(
                                               images: images,
                                               initialIndex: index,
                                               isAsset: true,
@@ -787,7 +794,8 @@ class PostDetailPage extends StatelessWidget {
                                         );
                                       },
                                       child: ClipRRect(
-                                        borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                        borderRadius: const BorderRadius.all(
+                                            Radius.circular(10)),
                                         child: Image.asset(
                                           images[index],
                                           fit: BoxFit.cover,

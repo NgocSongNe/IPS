@@ -20,7 +20,8 @@ class SuggestedPlacesScreen extends StatefulWidget {
 class _SuggestedPlacesScreenState extends State<SuggestedPlacesScreen> {
   String? _startPOI; // Điểm đầu được chọn
   String? _endPOI; // Điểm cuối được chọn
-  List<Map<String, dynamic>> _poiList = []; // Danh sách các POI từ POISelectionScreen
+  List<Map<String, dynamic>> _poiList =
+      []; // Danh sách các POI từ POISelectionScreen
 
   @override
   void initState() {
@@ -53,7 +54,7 @@ class _SuggestedPlacesScreenState extends State<SuggestedPlacesScreen> {
       // Kiểm tra nguồn trang và điều hướng tương ứng
       if (widget.sourcePage == 'HomePage') {
         // Nếu truy cập từ HomePage, chỉ pop để trở về
-      Navigator.pop(context);
+        Navigator.pop(context);
       } else if (widget.sourcePage == 'InformationPage') {
         // Nếu truy cập từ InformationPage, không điều hướng, giữ nguyên trang
         // Không làm gì cả, ở lại SuggestedPlacesScreen
@@ -84,7 +85,8 @@ class _SuggestedPlacesScreenState extends State<SuggestedPlacesScreen> {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                _buildLocationDropdown('Chọn điểm đầu', Icons.location_on, true),
+                _buildLocationDropdown(
+                    'Chọn điểm đầu', Icons.location_pin, true),
                 const SizedBox(height: 10),
                 _buildLocationDropdown('Chọn điểm cuối', Icons.place, false),
                 const SizedBox(height: 20),
@@ -109,7 +111,8 @@ class _SuggestedPlacesScreenState extends State<SuggestedPlacesScreen> {
                     ),
                     ElevatedButton.icon(
                       onPressed: () {
-                    
+                        _drawRoute(showDirections: false); // Tìm đường
+
                         _drawRoute(
                             showDirections:
                                 true); // Vẽ đường đi và đọc hướng dẫn
@@ -142,7 +145,8 @@ class _SuggestedPlacesScreenState extends State<SuggestedPlacesScreen> {
           Expanded(
             child: widget.poiSelectionScreen != null
                 ? widget.poiSelectionScreen!.buildMapSection(context, () {
-                    setState(() {}); // Làm mới giao diện khi có thay đổi trên bản đồ
+                    setState(
+                        () {}); // Làm mới giao diện khi có thay đổi trên bản đồ
                   })
                 : const Center(child: Text("Không thể tải bản đồ")),
           ),
@@ -187,10 +191,12 @@ class _SuggestedPlacesScreenState extends State<SuggestedPlacesScreen> {
                   setState(() {
                     if (isStartPoint) {
                       _startPOI = value;
-                      widget.poiSelectionScreen?.selectedMarkerRP = value; // Cập nhật điểm đầu
+                      widget.poiSelectionScreen?.selectedMarkerRP =
+                          value; // Cập nhật điểm đầu
                     } else {
                       _endPOI = value;
-                      widget.poiSelectionScreen?.secondSelectedMarkerRP = value; // Cập nhật điểm cuối
+                      widget.poiSelectionScreen?.secondSelectedMarkerRP =
+                          value; // Cập nhật điểm cuối
                     }
                   });
                 },

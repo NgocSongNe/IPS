@@ -11,7 +11,9 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:sensors_plus/sensors_plus.dart'; // Thêm import này
 import 'dart:ui' as ui; // Import for Path and related classes with alias
 import 'package:flutter_application_1/services/cache_manager.dart';
+
 class POISelectionScreen {
+  bool showDirectionsButton = false;
   final MapController mapController = MapController();
   double currentZoom = 20.0;
   String? startPOI;
@@ -27,7 +29,7 @@ class POISelectionScreen {
   List<LatLng> waypoints = [];
   final GeoJsonParser geoJsonParser = GeoJsonParser();
   late LatLngBounds mapBounds; // Biến lưu giới hạn bản đồ
- 
+
   String userPositionRP = "userPosition";
   List<String> directions = [];
   List<double> segmentDistances = [];
@@ -37,11 +39,11 @@ class POISelectionScreen {
 
   final BuildContext context;
   final FlutterTts _flutterTts = FlutterTts();
-   double _compassHeading = 0.0;
+  double _compassHeading = 0.0;
   final Function startWifiTracking;
   final Function stopWifiTracking;
 
-   String? selectedCategory;
+  String? selectedCategory;
 
   // Dữ liệu mẫu để mô phỏng vị trí User, sẽ được tạo từ waypoints
   int mockPositionIndex = 0;
@@ -89,30 +91,35 @@ class POISelectionScreen {
     "39": "phong_tap_chi",
     "40": "cau_thang_tang_2",
   };
-String _getCategoryFromRP(String rp) {
-  String folderName = rpToFolderMap[rp] ?? 'unknown';
+  String _getCategoryFromRP(String rp) {
+    String folderName = rpToFolderMap[rp] ?? 'unknown';
 
-  // Định nghĩa các category theo folderName
-  Map<String, String> categoryMap = {
-    'tv3_4': 'TV3,4',
-    'hoi_truong_thu_vien': 'Hội trường thư viện',
-    'khu_vuc_doc': 'Khu vực đọc',
-    'can_tin': 'Căn tin',
-    'phong_tap_chi': 'Phòng tạp chí',
-    'ban_thu_thu': 'Kệ sách',
-    'khu_vuc_tu_hoc': 'Khu vực tự học',
-    'hanh_lang': 'Hành lang',
-    'cua_ra_vao': 'Cửa ra vào',
-    'cau_thang': 'Cầu thang',
-    'cau_thang_tang_2': 'Cầu thang tầng 2',
-  };
+    // Định nghĩa các category theo folderName
+    Map<String, String> categoryMap = {
+      'tv3_4': 'TV3,4',
+      'hoi_truong_thu_vien': 'Hội trường thư viện',
+      'khu_vuc_doc': 'Khu vực đọc',
+      'can_tin': 'Căn tin',
+      'phong_tap_chi': 'Phòng tạp chí',
+      'ban_thu_thu': 'Kệ sách',
+      'khu_vuc_tu_hoc': 'Khu vực tự học',
+      'hanh_lang': 'Hành lang',
+      'cua_ra_vao': 'Cửa ra vào',
+      'cau_thang': 'Cầu thang',
+      'cau_thang_tang_2': 'Cầu thang tầng 2',
+    };
 
-  // Trả về category dựa trên folderName
-  return categoryMap[folderName] ?? 'Khác'; // Trả về 'Khác' nếu không có tên category
-}
+    // Trả về category dựa trên folderName
+    return categoryMap[folderName] ??
+        'Khác'; // Trả về 'Khác' nếu không có tên category
+  }
 
   POISelectionScreen(
-    {required this.userPositionCoordinates,  required this.selectedCategory,required this.context,required this.startWifiTracking, required this.stopWifiTracking}) {
+      {required this.userPositionCoordinates,
+      required this.selectedCategory,
+      required this.context,
+      required this.startWifiTracking,
+      required this.stopWifiTracking}) {
     _loadWallsFromAPI();
     _loadPOIData();
     loadGeoJson().then((_) {
@@ -146,7 +153,6 @@ String _getCategoryFromRP(String rp) {
     await _flutterTts.setVolume(1.0);
     await _flutterTts.setPitch(1.0);
   }
-  
 
   Future<void> _speakDirections() async {
     if (directions.isEmpty) return;
@@ -226,12 +232,14 @@ String _getCategoryFromRP(String rp) {
     directions.clear();
     segmentDistances.clear();
     if (originalRoute.length < 2) {
-      print("Original route has less than 2 points, cannot calculate directions.");
+      print(
+          "Original route has less than 2 points, cannot calculate directions.");
       return;
     }
 
     for (int i = 0; i < originalRoute.length - 1; i++) {
-      double segmentDistance = _calculateDistance(originalRoute[i], originalRoute[i + 1]);
+      double segmentDistance =
+          _calculateDistance(originalRoute[i], originalRoute[i + 1]);
       segmentDistances.add(segmentDistance);
 
       if (i == 0 || originalRoute.length < 3) {
@@ -330,7 +338,7 @@ String _getCategoryFromRP(String rp) {
     for (String endpoint in geoJsonEndpoints) {
       try {
         final response =
-            await http.get(Uri.parse("http://192.168.1.5:8765$endpoint"));
+            await http.get(Uri.parse("http://192.168.1.11:8765$endpoint"));
         if (response.statusCode == 200) {
           final geoJson = jsonDecode(response.body);
           if (geoJson['features'] is List) {
@@ -402,7 +410,8 @@ String _getCategoryFromRP(String rp) {
           }
           print("Loaded GeoJSON from $endpoint");
         } else {
-          print("Failed to load GeoJSON from $endpoint: ${response.statusCode}");
+          print(
+              "Failed to load GeoJSON from $endpoint: ${response.statusCode}");
         }
       } catch (e) {
         print("Error loading GeoJSON from $endpoint: $e");
@@ -419,8 +428,10 @@ String _getCategoryFromRP(String rp) {
         for (int k = 0; k < hallway1.length - 1; k++) {
           for (int l = 0; l < hallway2.length - 1; l++) {
             LatLng? intersection = _findIntersection(
-              hallway1[k], hallway1[k + 1],
-              hallway2[l], hallway2[l + 1],
+              hallway1[k],
+              hallway1[k + 1],
+              hallway2[l],
+              hallway2[l + 1],
             );
             if (intersection != null && !waypoints.contains(intersection)) {
               waypoints.add(intersection);
@@ -428,7 +439,7 @@ String _getCategoryFromRP(String rp) {
             }
           }
         }
-      } 
+      }
     }
   }
 
@@ -471,7 +482,8 @@ String _getCategoryFromRP(String rp) {
         options: FitBoundsOptions(padding: EdgeInsets.all(50)),
       );
 
-      print("Map bounds: Southwest (${mapBounds.south}, ${mapBounds.west}), Northeast (${mapBounds.north}, ${mapBounds.east})");
+      print(
+          "Map bounds: Southwest (${mapBounds.south}, ${mapBounds.west}), Northeast (${mapBounds.north}, ${mapBounds.east})");
     }
   }
 
@@ -497,7 +509,7 @@ String _getCategoryFromRP(String rp) {
   Future<void> _loadWallsFromAPI() async {
     try {
       final response =
-          await http.get(Uri.parse("http://192.168.1.5:8765/geojson/Paths"));
+          await http.get(Uri.parse("http://192.168.1.11:8765/geojson/Paths"));
       if (response.statusCode == 200) {
         final pathsJson = json.decode(response.body);
         walls = (pathsJson['features'] as List).map<List<LatLng>>((feature) {
@@ -517,7 +529,7 @@ String _getCategoryFromRP(String rp) {
   Future<void> _loadPOIData() async {
     try {
       final response =
-          await http.get(Uri.parse("http://192.168.1.5:8765/geojson/POI"));
+          await http.get(Uri.parse("http://192.168.1.11:8765/geojson/POI"));
       if (response.statusCode == 200) {
         final poiJson = jsonDecode(response.body);
         // Lấy dữ liệu mô tả từ hàm getPOIDescriptions
@@ -527,28 +539,28 @@ String _getCategoryFromRP(String rp) {
         for (var feature in poiJson['features']) {
           final properties = feature['properties'];
           final coordinates = feature['geometry']['coordinates'];
-          
+
           String category = properties['Name'] ?? 'Unknown';
           String rp = properties['RP'] ?? 'unknown';
           String folderName = rpToFolderMap[rp] ?? 'unknown';
           List<String> images = await _getImagesFromFolder(folderName);
 
-             if (selectedCategory == null || selectedCategory == category) {
-          var poi = {
-            "name": properties['Name'] ?? 'Unknown',
-            "rp": properties['RP'] ?? 'Unknown',
-            "coordinates": LatLng(coordinates[1], coordinates[0]),
-            // Sử dụng mô tả từ getPOIDescriptions thay vì từ file geojson
-            "description": poiDescriptions[rp] ?? 'Không có mô tả',
-            "images": images,
-            "category": category,
-          };
+          if (selectedCategory == null || selectedCategory == category) {
+            var poi = {
+              "name": properties['Name'] ?? 'Unknown',
+              "rp": properties['RP'] ?? 'Unknown',
+              "coordinates": LatLng(coordinates[1], coordinates[0]),
+              // Sử dụng mô tả từ getPOIDescriptions thay vì từ file geojson
+              "description": poiDescriptions[rp] ?? 'Không có mô tả',
+              "images": images,
+              "category": category,
+            };
 
-          print(
-              "Loaded POI: ${poi['name']}, RP: ${poi['rp']}, Description: ${poi['description']}");
+            print(
+                "Loaded POI: ${poi['name']}, RP: ${poi['rp']}, Description: ${poi['description']}");
 
-          poiList.add(poi);
-        }
+            poiList.add(poi);
+          }
         }
         for (int i = 0; i < waypoints.length; i++) {
           poiList.add({
@@ -599,7 +611,8 @@ String _getCategoryFromRP(String rp) {
         if (!_isPathBlocked(wp1Coords, wp2Coords)) {
           double distance = _calculateDistance(wp1Coords, wp2Coords);
           generatedGraph[wp1RP]!.add({"rp": wp2RP, "distance": distance});
-          print("Added edge between waypoints: $wp1RP -> $wp2RP, distance: $distance");
+          print(
+              "Added edge between waypoints: $wp1RP -> $wp2RP, distance: $distance");
         }
       }
     }
@@ -715,9 +728,15 @@ String _getCategoryFromRP(String rp) {
       return [];
     }
 
-    final Map<String, double> gScore = {for (var node in graph.keys) node: double.infinity};
-    final Map<String, double> fScore = {for (var node in graph.keys) node: double.infinity};
-    final Map<String, String?> cameFrom = {for (var node in graph.keys) node: null};
+    final Map<String, double> gScore = {
+      for (var node in graph.keys) node: double.infinity
+    };
+    final Map<String, double> fScore = {
+      for (var node in graph.keys) node: double.infinity
+    };
+    final Map<String, String?> cameFrom = {
+      for (var node in graph.keys) node: null
+    };
     final List<String> openSet = [start];
     final Set<String> closedSet = {};
 
@@ -736,7 +755,8 @@ String _getCategoryFromRP(String rp) {
           temp = cameFrom[temp];
         }
         final route = path.map((rp) {
-          return poiList.firstWhere((poi) => poi['rp'] == rp)['coordinates'] as LatLng;
+          return poiList.firstWhere((poi) => poi['rp'] == rp)['coordinates']
+              as LatLng;
         }).toList();
         print("Shortest path found: $path");
         print("Route coordinates: $route");
@@ -822,7 +842,7 @@ String _getCategoryFromRP(String rp) {
 
         double x = 0.5 *
             ((2 * p1.latitude) +
-              (-p0.latitude + p2.latitude) * t +
+                (-p0.latitude + p2.latitude) * t +
                 (2 * p0.latitude -
                         5 * p1.latitude +
                         4 * p2.latitude -
@@ -836,7 +856,7 @@ String _getCategoryFromRP(String rp) {
 
         double y = 0.5 *
             ((2 * p1.longitude) +
-              (-p0.longitude + p2.longitude) * t +
+                (-p0.longitude + p2.longitude) * t +
                 (2 * p0.longitude -
                         5 * p1.longitude +
                         4 * p2.longitude -
@@ -856,7 +876,8 @@ String _getCategoryFromRP(String rp) {
     return smoothedRoute;
   }
 
-  List<Marker> _createDottedRoute(List<LatLng> route, {double dotSpacing = 5.0, double dotSize = 10.0}) {
+  List<Marker> _createDottedRoute(List<LatLng> route,
+      {double dotSpacing = 5.0, double dotSize = 10.0}) {
     List<Marker> dottedMarkers = [];
 
     if (route.length < 2) return dottedMarkers;
@@ -910,6 +931,8 @@ String _getCategoryFromRP(String rp) {
         _calculateDirections();
         if (showDirections) {
           _showDirections(context);
+          showDirectionsButton =
+              true; // Hiển thị nút bật/tắt sau khi đóng dialog
           _speakDirections();
         }
         setStateCallback();
@@ -922,12 +945,14 @@ String _getCategoryFromRP(String rp) {
     }
   }
 
-  void _drawRoute(BuildContext context, VoidCallback setStateCallback, {required bool showDirections}) {
+  void _drawRoute(BuildContext context, VoidCallback setStateCallback,
+      {required bool showDirections}) {
     if (startPOI != null && endPOI != null) {
       originalRoute = _findShortestPath(startPOI!, endPOI!);
       if (originalRoute.isNotEmpty) {
         selectedRoute = _smoothRoute(originalRoute, segmentsPerPoint: 10);
-        pathDistance = _calculatePathDistance(originalRoute); // Tính khoảng cách trên đường gốc
+        pathDistance = _calculatePathDistance(
+            originalRoute); // Tính khoảng cách trên đường gốc
         _calculateDirections();
         if (showDirections) {
           _showDirections(context);
@@ -935,16 +960,32 @@ String _getCategoryFromRP(String rp) {
         setStateCallback();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Không tìm thấy đường đi giữa hai điểm")),
+          const SnackBar(
+              content: Text("Không tìm thấy đường đi giữa hai điểm")),
         );
       }
     }
   }
 
+  void _clearRoute(VoidCallback setStateCallback) {
+    selectedRoute = [];
+    originalRoute = [];
+    pathDistance = null;
+    startPOI = null;
+    endPOI = null;
+    directions = [];
+    segmentDistances = [];
+    showDirectionsButton = false; // Ẩn nút bật/tắt chỉ đường và nút xóa
+    selectedMarkerRP = null; // Xóa điểm được chọn
+    secondSelectedMarkerRP = null; // Xóa điểm đích được chọn
+    stopWifiTracking(); // Dừng theo dõi WiFi nếu đang chạy
+    setStateCallback(); // Cập nhật giao diện
+  }
 
-  void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
+  void _onPOITap(
+      String rp, BuildContext context, VoidCallback setStateCallback) {
     var poi = poiList.firstWhere(
-          (poi) => poi['rp'] == rp,
+      (poi) => poi['rp'] == rp,
       orElse: () => {
         "name": "Không tìm thấy",
         "description": "Không tìm thấy POI với RP: $rp",
@@ -957,7 +998,7 @@ String _getCategoryFromRP(String rp) {
       return;
     }
 
-    selectedMarkerRP = rp;  // Đánh dấu POI này là đã chọn
+    selectedMarkerRP = rp; // Đánh dấu POI này là đã chọn
 
     showModalBottomSheet(
       context: context,
@@ -967,7 +1008,6 @@ String _getCategoryFromRP(String rp) {
       ),
       builder: (BuildContext context) {
         return Container(
-         
           height: MediaQuery.of(context).size.height * 0.5,
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -996,120 +1036,122 @@ String _getCategoryFromRP(String rp) {
                 style: TextStyle(fontSize: 14),
               ),
               const SizedBox(height: 10),
-             SingleChildScrollView(  // Cho phép cuộn ngang
-  scrollDirection: Axis.horizontal,  // Cuộn theo chiều ngang
-  child: Row(
-                children: [
-                  
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      startPOI = userPositionRP;
-                      endPOI = rp;
-                      selectedMarkerRP = userPositionRP;
-                      secondSelectedMarkerRP = rp;
+              SingleChildScrollView(
+                // Cho phép cuộn ngang
+                scrollDirection: Axis.horizontal, // Cuộn theo chiều ngang
+                child: Row(
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        startPOI = userPositionRP;
+                        endPOI = rp;
+                        selectedMarkerRP = userPositionRP;
+                        secondSelectedMarkerRP = rp;
 
-                      _drawRouteCD(context, setStateCallback,
-                          showDirections: true);
-                      Navigator.of(context).pop();
-                      startWifiTracking();
-                    },
-                    icon: const Icon(Icons.play_arrow, color: Colors.white),
-                    label: Text(
-                      "Bắt đầu",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        _drawRouteCD(context, setStateCallback,
+                            showDirections: true);
+                        Navigator.of(context).pop();
+                        startWifiTracking();
+                      },
+                      icon: const Icon(Icons.play_arrow, color: Colors.white),
+                      label: Text(
+                        "Bắt đầu",
+                        style: TextStyle(color: Colors.white),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                 
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      startPOI = userPositionRP;
-                      endPOI = rp;
-                      selectedMarkerRP = userPositionRP;
-                      secondSelectedMarkerRP = rp;
-                      _drawRoute(context, setStateCallback, showDirections: true);
-                      Navigator.of(context).pop();
-                    },
-                    icon: const Icon(Icons.directions, color: Colors.white),
-                    label: Text(
-                      "Tìm đường",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      // Điều hướng đến màn hình InformationPage
-                      Navigator.of(context).pop(); // Đóng bottom sheet
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => InformationPage(
-                            poiName: poi['name'], // Truyền tên địa điểm (poi['name']) vào InformationPage
-                          ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      );
-                    },
-                    icon: const Icon(Icons.info, color: Colors.white),
-                    label: Text(
-                      "Thông tin",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.yellow[700], // Màu vàng
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 10),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        startPOI = userPositionRP;
+                        endPOI = rp;
+                        selectedMarkerRP = userPositionRP;
+                        secondSelectedMarkerRP = rp;
+                        _drawRoute(context, setStateCallback,
+                            showDirections: true);
+                        Navigator.of(context).pop();
+                      },
+                      icon: const Icon(Icons.directions, color: Colors.white),
+                      label: Text(
+                        "Tìm đường",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        // Điều hướng đến màn hình InformationPage
+                        Navigator.of(context).pop(); // Đóng bottom sheet
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => InformationPage(
+                              poiName: poi[
+                                  'name'], // Truyền tên địa điểm (poi['name']) vào InformationPage
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.info, color: Colors.white),
+                      label: Text(
+                        "Thông tin",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.yellow[700], // Màu vàng
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-             ),
               const SizedBox(height: 10),
               Expanded(
-                child: poi['images'] != null && (poi['images'] as List).isNotEmpty
-                    ? ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: (poi['images'] as List).length,
-                    itemBuilder: (context, index) {
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 10),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.asset(
-                            (poi['images'] as List)[index],
-                            width: 150,
-                            height: 100,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: 150,
-                                height: 100,
-                                color: Colors.grey,
-                                child: const Center(
+                child:
+                    poi['images'] != null && (poi['images'] as List).isNotEmpty
+                        ? ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: (poi['images'] as List).length,
+                            itemBuilder: (context, index) {
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 10),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.asset(
+                                    (poi['images'] as List)[index],
+                                    width: 150,
+                                    height: 100,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        width: 150,
+                                        height: 100,
+                                        color: Colors.grey,
+                                        child: const Center(
                                           child: Icon(Icons.error,
                                               color: Colors.white),
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 ),
                               );
                             },
-                          ),
-                        ),
-                      );
-                    },
-                )
-                    : const Center(child: Text("Không có hình ảnh")),
+                          )
+                        : const Center(child: Text("Không có hình ảnh")),
               ),
             ],
           ),
@@ -1143,9 +1185,11 @@ String _getCategoryFromRP(String rp) {
 
               if (position.center != null && !hasGesture) {
                 userPositionCoordinates = position.center!;
-                final userPoiIndex = poiList.indexWhere((poi) => poi['rp'] == userPositionRP);
+                final userPoiIndex =
+                    poiList.indexWhere((poi) => poi['rp'] == userPositionRP);
                 if (userPoiIndex != -1) {
-                  poiList[userPoiIndex]['coordinates'] = userPositionCoordinates;
+                  poiList[userPoiIndex]['coordinates'] =
+                      userPositionCoordinates;
                   graph = _generateGraph();
                 }
 
@@ -1162,99 +1206,102 @@ String _getCategoryFromRP(String rp) {
             TileLayer(
               urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
               subdomains: ['a', 'b', 'c'],
-            
             ),
             if (geoJsonParser.polygons.isNotEmpty)
               PolygonLayer(polygons: geoJsonParser.polygons),
             MarkerLayer(
               rotate: true,
               markers: [
-                if (currentZoom >= 20) ...poiList.map((poi) {
-                  if (poi['rp'] == userPositionRP) return null;
-                  
-                  if (poi['name'] == 'Cầu thang') return null;
-                  final isHighlighted = selectedCategory != null && _getCategoryFromRP(poi['rp']) == selectedCategory;
-                  
-                  final isSelected = poi['rp'] == selectedMarkerRP || poi['rp'] == secondSelectedMarkerRP;
-                  final poiCategory = _getCategoryFromRP(poi['rp']); // Get category of POI
-                  return Marker(
-                    point: poi['coordinates'] as LatLng,
-                    width: isSelected ? 100.0 :  (isHighlighted ? 90.0 : 90.0),
-                    height: isSelected ? 100.0 : (isHighlighted ? 90.0 : 90.0),
-                    child: GestureDetector(
-                      onTap: () {
-                        _onPOITap(poi['rp'] as String, context, setStateCallback);
-                        setStateCallback();
-                      },
-                      
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-                            decoration: BoxDecoration(
-                               color: isSelected
-                ? Colors.green.withOpacity(0.7) // Green if selected
-                : isHighlighted
-                    ? Colors.blue.withOpacity(0.7) // Highlighted category POIs in blue
-                    : Colors.white.withOpacity(0.7), 
-                              borderRadius: BorderRadius.circular(4.0),
-                            ),
-                            child: Text(
-                              poi['name'] ?? "Unknown",
-                              style: TextStyle(
-                                fontSize: isSelected ? 12 : 10,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                               textAlign: TextAlign.center,
-                            ),
-                           
-                          ),
-                          if (isSelected)
-                            Icon(
-                              Icons.location_on,
-                               color: isSelected
-              ? Colors.green // Green if selected
-              : isHighlighted
-                  ? Colors.blue // Blue if highlighted by category
-                  : Colors.red, 
-                              size: 30,
-                            )
-                          else
-                            Container(
-                              width: 10,
-                              height: 10,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.red.withOpacity(0.6),
-                                border: Border.all(
-                                  color: Colors.red,
-                                  width: 1,
+                if (currentZoom >= 20)
+                  ...poiList
+                      .map((poi) {
+                        if (poi['rp'] == userPositionRP) return null;
+                        if (poi['name'] == 'Cầu thang') return null;
+                        final isHighlighted = selectedCategory != null &&
+                            _getCategoryFromRP(poi['rp']) == selectedCategory;
+                        final isSelected = poi['rp'] == selectedMarkerRP ||
+                            poi['rp'] == secondSelectedMarkerRP;
+                        final poiCategory = _getCategoryFromRP(poi['rp']);
+                        return Marker(
+                          point: poi['coordinates'] as LatLng,
+                          width: isSelected
+                              ? 100.0
+                              : (isHighlighted ? 90.0 : 90.0),
+                          height: isSelected
+                              ? 100.0
+                              : (isHighlighted ? 90.0 : 90.0),
+                          child: GestureDetector(
+                            onTap: () {
+                              _onPOITap(poi['rp'] as String, context,
+                                  setStateCallback);
+                              setStateCallback();
+                            },
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 4.0, vertical: 2.0),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? Colors.green.withOpacity(0.7)
+                                        : isHighlighted
+                                            ? Colors.blue.withOpacity(0.7)
+                                            : Colors.white.withOpacity(0.7),
+                                    borderRadius: BorderRadius.circular(4.0),
+                                  ),
+                                  child: Text(
+                                    poi['name'] ?? "Unknown",
+                                    style: TextStyle(
+                                      fontSize: isSelected ? 12 : 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
                                 ),
-                              ),
+                                if (isSelected)
+                                  Icon(
+                                    Icons.location_on,
+                                    color: isSelected
+                                        ? Colors.green
+                                        : isHighlighted
+                                            ? Colors.blue
+                                            : Colors.red,
+                                    size: 30,
+                                  )
+                                else
+                                  Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.red.withOpacity(0.6),
+                                      border: Border.all(
+                                        color: Colors.red,
+                                        width: 1,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
-                        ],
-                      ),
-                    ),
-                  );
+                          ),
+                        );
                       })
                       .whereType<Marker>()
                       .toList(),
-                // Marker cho vùng hình nón
                 Marker(
                   point: userPositionCoordinates,
                   width: 100.0,
                   height: 100.0,
                   child: Transform.rotate(
-                    angle: -_compassHeading * pi / 180, // Xoay theo góc la bàn
+                    angle: -_compassHeading * pi / 180,
                     child: CustomPaint(
                       size: Size(100, 100),
                       painter: ConePainter(),
                     ),
                   ),
                 ),
-                // Marker cho vị trí User
                 Marker(
                   point: userPositionCoordinates,
                   width: selectedMarkerRP == userPositionRP ? 80.0 : 60.0,
@@ -1274,7 +1321,8 @@ String _getCategoryFromRP(String rp) {
                         child: Text(
                           "User",
                           style: TextStyle(
-                            fontSize: selectedMarkerRP == userPositionRP ? 15 : 15,
+                            fontSize:
+                                selectedMarkerRP == userPositionRP ? 15 : 15,
                             fontWeight: FontWeight.bold,
                             color: Colors.black,
                           ),
@@ -1282,13 +1330,14 @@ String _getCategoryFromRP(String rp) {
                       ),
                       Icon(
                         Icons.person_pin_circle,
-                        color: selectedMarkerRP == userPositionRP ? Colors.red : Colors.blue,
+                        color: selectedMarkerRP == userPositionRP
+                            ? Colors.red
+                            : Colors.blue,
                         size: 30,
                       ),
                     ],
                   ),
                 ),
-
                 ...dottedRouteMarkers,
               ],
             ),
@@ -1306,8 +1355,37 @@ String _getCategoryFromRP(String rp) {
               ),
               child: Text(
                 "Tổng khoảng cách: ${pathDistance!.toStringAsFixed(2)} mét",
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               ),
+            ),
+          ),
+        // Nút bật/tắt chỉ đường
+        if (showDirectionsButton)
+          Positioned(
+            bottom: 20,
+            left: 20,
+            child: FloatingActionButton(
+              onPressed: () {
+                _showDirections(context);
+              },
+              child: Icon(Icons.directions),
+              tooltip: "Hiển thị hướng dẫn",
+              backgroundColor: const Color.fromARGB(255, 45, 240, 152),
+            ),
+          ),
+        // Nút xóa đường đi
+        if (showDirectionsButton)
+          Positioned(
+            bottom: 80,
+            left: 20,
+            child: FloatingActionButton(
+              onPressed: () {
+                _clearRoute(setStateCallback);
+              },
+              child: Icon(Icons.delete),
+              tooltip: "Xóa đường đi",
+              backgroundColor: const Color.fromARGB(255, 244, 172, 46),
             ),
           ),
         Positioned(
@@ -1321,37 +1399,34 @@ String _getCategoryFromRP(String rp) {
               }
 
               if (mockPositionIndex < mockUserPositions.length) {
-                // Cập nhật vị trí User
                 userPositionCoordinates = mockUserPositions[mockPositionIndex];
                 mockPositionIndex++;
                 if (mockPositionIndex == mockUserPositions.length) {
-                  mockPositionIndex = 0; // Quay lại đầu danh sách
+                  mockPositionIndex = 0;
                 }
 
-                // Cập nhật tọa độ của User trong poiList
-                final userPoiIndex = poiList.indexWhere((poi) => poi['rp'] == userPositionRP);
+                final userPoiIndex =
+                    poiList.indexWhere((poi) => poi['rp'] == userPositionRP);
                 if (userPoiIndex != -1) {
-                  poiList[userPoiIndex]['coordinates'] = userPositionCoordinates;
-                  graph = _generateGraph(); // Cập nhật đồ thị
+                  poiList[userPoiIndex]['coordinates'] =
+                      userPositionCoordinates;
+                  graph = _generateGraph();
                 }
 
-                // Di chuyển bản đồ đến vị trí mới của User
                 mapController.move(userPositionCoordinates, currentZoom);
 
-                // Nếu có endPOI, vẽ lại đường đi
                 if (endPOI != null) {
                   startPOI = userPositionRP;
                   _drawRoute(context, setStateCallback, showDirections: false);
                 }
 
-                // Làm mới giao diện
                 setStateCallback();
               }
             },
             child: Icon(Icons.directions_walk),
             tooltip: "Mô phỏng di chuyển",
-            ),
           ),
+        ),
       ],
     );
   }
