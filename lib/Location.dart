@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/POISelectionScreen.dart';
+import 'package:flutter_application_1/home.dart'; // Import HomePage
 
 class SuggestedPlacesScreen extends StatefulWidget {
-  final POISelectionScreen? poiSelectionScreen; // Nhận POISelectionScreen từ HomePage
+  final POISelectionScreen?
+      poiSelectionScreen; // Nhận POISelectionScreen từ HomePage
+  final String sourcePage; // Xác định trang nguồn
 
-  const SuggestedPlacesScreen({super.key, this.poiSelectionScreen});
+  const SuggestedPlacesScreen({
+    super.key,
+    this.poiSelectionScreen,
+    required this.sourcePage, // Bắt buộc truyền sourcePage
+  });
 
   @override
   _SuggestedPlacesScreenState createState() => _SuggestedPlacesScreenState();
@@ -43,8 +50,14 @@ class _SuggestedPlacesScreenState extends State<SuggestedPlacesScreen> {
         }, showDirections: false);
       }
 
-      // Quay về trang trước (HomePage)
+      // Kiểm tra nguồn trang và điều hướng tương ứng
+      if (widget.sourcePage == 'HomePage') {
+        // Nếu truy cập từ HomePage, chỉ pop để trở về
       Navigator.pop(context);
+      } else if (widget.sourcePage == 'InformationPage') {
+        // Nếu truy cập từ InformationPage, không điều hướng, giữ nguyên trang
+        // Không làm gì cả, ở lại SuggestedPlacesScreen
+      }
     } else {
       // Hiển thị thông báo nếu chưa chọn đủ điểm
       ScaffoldMessenger.of(context).showSnackBar(
@@ -96,8 +109,10 @@ class _SuggestedPlacesScreenState extends State<SuggestedPlacesScreen> {
                     ),
                     ElevatedButton.icon(
                       onPressed: () {
-                        _drawRoute(showDirections: false); // Tìm đường
-                        _drawRoute(showDirections: true); // Vẽ đường đi và đọc hướng dẫn
+                    
+                        _drawRoute(
+                            showDirections:
+                                true); // Vẽ đường đi và đọc hướng dẫn
                       },
                       icon: const Icon(Icons.play_arrow, color: Colors.white),
                       label: const Text(

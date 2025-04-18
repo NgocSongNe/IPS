@@ -6,12 +6,15 @@ import 'package:flutter_application_1/home.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_application_1/models/category_model.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_application_1/POISelectionScreen.dart'; // Import POISelectionScreen
 import 'Location.dart';
 
 class InformationPage extends StatefulWidget {
   final String? poiName; // Tham số để nhận tên địa điểm từ trang Home
+final POISelectionScreen?
+      poiSelectionScreen; // Nhận poiSelectionScreen từ HomePage
 
-  const InformationPage({super.key, this.poiName});
+  const InformationPage({super.key, this.poiName, this.poiSelectionScreen});
 
   @override
   State<InformationPage> createState() => _InformationPageState();
@@ -315,9 +318,22 @@ class _InformationPageState extends State<InformationPage> {
       ),
       child: GestureDetector(
         onTap: () {
+          if (widget.poiSelectionScreen == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text(
+                      'Không thể mở tìm kiếm: Dữ liệu bản đồ không khả dụng')),
+            );
+            return;
+          }
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => SuggestedPlacesScreen()),
+            MaterialPageRoute(
+              builder: (context) => SuggestedPlacesScreen(
+                poiSelectionScreen: widget.poiSelectionScreen,
+                sourcePage: 'InformationPage', // Truyền sourcePage
+              ),
+            ),
           );
         },
         child: AbsorbPointer(
@@ -417,8 +433,7 @@ Container _categoriesMethod() {
         children: [
           ListTile(
             leading: CircleAvatar(
-                backgroundImage: AssetImage('../assets/images/LibDLU.jpg'),
-              radius: 25,
+                backgroundImage: AssetImage('../assets/LibDLU.jpg'),
             ),
             title: Text(
                 'Thư viện DLU',
@@ -627,10 +642,7 @@ Container _categoriesMethod() {
             MaterialPageRoute(builder: (context) => HomePage()),
           );
         } else if (index == 1) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => InformationPage()),
-          );
+          // Đã ở trang InformationPage, không cần làm gì
         } else if (index == 2) {
           Navigator.push(
             context,

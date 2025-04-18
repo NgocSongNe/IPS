@@ -18,7 +18,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_application_1/ultils/permission.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Thêm import này
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -33,7 +33,6 @@ class _HomePageState extends State<HomePage> {
   bool showLabel = true;
   List<CategoryModel> categories = [];
   List<MapModel> maps = [];
-
   bool _isDialogDismissed = false;
   PhotoViewComputedScale _photoViewScale = PhotoViewComputedScale.covered * 1;
   File? profileImage;
@@ -168,7 +167,7 @@ Future<void> sendWiFiDataToServer() async {
 
     // Xóa dữ liệu cũ và cập nhật lại danh sách RSSI
     List<int> wifiData = [];
-  
+  wifiData.clear();
     // Cập nhật lại dữ liệu wifiData mỗi lần quét
     for (var mac in macAddresses) {
       wifiData.add(macToRssi[mac] ?? -100); // Nếu không có mạng, gán -100
@@ -360,6 +359,7 @@ SizedBox(height: 10),
             MaterialPageRoute(
               builder: (context) => SuggestedPlacesScreen(
                 poiSelectionScreen: poiSelectionScreen,
+                sourcePage: 'HomePage', // Truyền sourcePage
               ),
             ),
           );
@@ -371,7 +371,7 @@ SizedBox(height: 10),
               border: InputBorder.none,
               hintText: '   Tìm kiếm địa điểm ...',
               hintStyle:
-                  GoogleFonts.openSans(color: Colors.grey[00], fontSize: 18),
+                  GoogleFonts.openSans(color: Colors.grey[700], fontSize: 18),
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -417,7 +417,12 @@ SizedBox(height: 10),
           if (index == 1) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => InformationPage()),
+              MaterialPageRoute(
+                builder: (context) => InformationPage(
+                  poiSelectionScreen:
+                      poiSelectionScreen, // Truyền poiSelectionScreen
+                ),
+              ),
             );
           } else if (index == 2) {
             Navigator.push(
@@ -478,7 +483,7 @@ class _POISelectionScreenPageState extends State<POISelectionScreenPage> {
                 style: TextStyle(fontSize: 16)),
           Expanded(
             child: poiSelectionScreen.buildMapSection(context, () {
-              setState(() {});  // Notify parent to update the state
+              setState(() {});
             }),
           ),
         ],
