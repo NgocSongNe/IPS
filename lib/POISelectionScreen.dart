@@ -26,6 +26,7 @@ class POISelectionScreen {
   List<List<LatLng>> hallways = [];
   List<LatLng> waypoints = [];
   final GeoJsonParser geoJsonParser = GeoJsonParser();
+  late LatLngBounds mapBounds; // Biến lưu giới hạn bản đồ
  
   String userPositionRP = "userPosition";
   List<String> directions = [];
@@ -41,6 +42,10 @@ class POISelectionScreen {
   final Function stopWifiTracking;
 
    String? selectedCategory;
+
+  // Dữ liệu mẫu để mô phỏng vị trí User, sẽ được tạo từ waypoints
+  int mockPositionIndex = 0;
+  List<LatLng> mockUserPositions = [];
 
   final Map<String, String> rpToFolderMap = {
     "1": "tv3_4",
@@ -111,7 +116,10 @@ String _getCategoryFromRP(String rp) {
     _loadWallsFromAPI();
     _loadPOIData();
     loadGeoJson().then((_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _focusOnPOIs());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _focusOnPOIs();
+        _initializeMockUserPositions(); // Khởi tạo mockUserPositions sau khi có waypoints
+      });
     });
     _initTts();
     _initCompass(); // Khởi tạo cảm biến la bàn
@@ -451,15 +459,38 @@ String _getCategoryFromRP(String rp) {
       final longitudes =
           geoJsonParser.markers.map((m) => m.point.longitude).toList();
 
-      final bounds = LatLngBounds(
+      mapBounds = LatLngBounds(
         LatLng(latitudes.reduce((a, b) => a < b ? a : b),
             longitudes.reduce((a, b) => a < b ? a : b)),
         LatLng(latitudes.reduce((a, b) => a > b ? a : b),
             longitudes.reduce((a, b) => a > b ? a : b)),
       );
 
-      mapController.fitBounds(bounds,
-          options: FitBoundsOptions(padding: EdgeInsets.all(50)));
+      mapController.fitBounds(
+        mapBounds,
+        options: FitBoundsOptions(padding: EdgeInsets.all(50)),
+      );
+
+      print("Map bounds: Southwest (${mapBounds.south}, ${mapBounds.west}), Northeast (${mapBounds.north}, ${mapBounds.east})");
+    }
+  }
+
+  void _initializeMockUserPositions() {
+    // Lấy tọa độ từ waypoints để đảm bảo tất cả đều nằm trong bản đồ
+    if (waypoints.isNotEmpty) {
+      // Lấy tối đa 5 điểm từ waypoints để làm tọa độ mô phỏng
+      mockUserPositions = waypoints.take(5).toList();
+      if (mockUserPositions.isEmpty) {
+        // Nếu không có waypoints, lấy tọa độ từ poiList (trừ vị trí User)
+        mockUserPositions = poiList
+            .where((poi) => poi['rp'] != userPositionRP)
+            .map((poi) => poi['coordinates'] as LatLng)
+            .take(5)
+            .toList();
+      }
+      print("Initialized mockUserPositions: $mockUserPositions");
+    } else {
+      print("No waypoints available, mockUserPositions not initialized.");
     }
   }
 
@@ -1117,6 +1148,12 @@ String _getCategoryFromRP(String rp) {
                   poiList[userPoiIndex]['coordinates'] = userPositionCoordinates;
                   graph = _generateGraph();
                 }
+
+                if (endPOI != null) {
+                  startPOI = userPositionRP;
+                  _drawRoute(context, setStateCallback, showDirections: false);
+                }
+
                 setStateCallback();
               }
             },
@@ -1271,6 +1308,48 @@ String _getCategoryFromRP(String rp) {
                 "Tổng khoảng cách: ${pathDistance!.toStringAsFixed(2)} mét",
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               ),
+            ),
+          ),
+        Positioned(
+          bottom: 20,
+          right: 20,
+          child: FloatingActionButton(
+            onPressed: () {
+              if (mockUserPositions.isEmpty) {
+                print("mockUserPositions is empty, cannot simulate movement.");
+                return;
+              }
+
+              if (mockPositionIndex < mockUserPositions.length) {
+                // Cập nhật vị trí User
+                userPositionCoordinates = mockUserPositions[mockPositionIndex];
+                mockPositionIndex++;
+                if (mockPositionIndex == mockUserPositions.length) {
+                  mockPositionIndex = 0; // Quay lại đầu danh sách
+                }
+
+                // Cập nhật tọa độ của User trong poiList
+                final userPoiIndex = poiList.indexWhere((poi) => poi['rp'] == userPositionRP);
+                if (userPoiIndex != -1) {
+                  poiList[userPoiIndex]['coordinates'] = userPositionCoordinates;
+                  graph = _generateGraph(); // Cập nhật đồ thị
+                }
+
+                // Di chuyển bản đồ đến vị trí mới của User
+                mapController.move(userPositionCoordinates, currentZoom);
+
+                // Nếu có endPOI, vẽ lại đường đi
+                if (endPOI != null) {
+                  startPOI = userPositionRP;
+                  _drawRoute(context, setStateCallback, showDirections: false);
+                }
+
+                // Làm mới giao diện
+                setStateCallback();
+              }
+            },
+            child: Icon(Icons.directions_walk),
+            tooltip: "Mô phỏng di chuyển",
             ),
           ),
       ],
