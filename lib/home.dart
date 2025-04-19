@@ -59,7 +59,7 @@ class _HomePageState extends State<HomePage> {
 
 Future<void> startWifiTracking() async {
   // Bắt đầu quét Wi-Fi mỗi 5 giây
-  wifiScanTimer = Timer.periodic(Duration(seconds: 15), (timer) async {
+  wifiScanTimer = Timer.periodic(Duration(seconds: 10), (timer) async {
     // Quét Wi-Fi và gửi dữ liệu
     await sendWiFiDataToServer();
     print("✅ Đã quét Wi-Fi và gửi dữ liệu đến server");
@@ -131,7 +131,7 @@ Future<void> stopWifiTracking() async {
     );
   }
 Future<void> sendWiFiDataToServer() async {
-  final url = Uri.parse('http://192.168.1.5/predict'); // URL server Node.js
+  final url = Uri.parse('http://10.10.67.90:8765/predict'); // URL server Node.js
 
   try {
     // Quét các mạng Wi-Fi xung quanh

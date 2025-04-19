@@ -330,7 +330,7 @@ String _getCategoryFromRP(String rp) {
     for (String endpoint in geoJsonEndpoints) {
       try {
         final response =
-            await http.get(Uri.parse("http://192.168.1.5:8765$endpoint"));
+            await http.get(Uri.parse("http://10.10.67.90:8765$endpoint"));
         if (response.statusCode == 200) {
           final geoJson = jsonDecode(response.body);
           if (geoJson['features'] is List) {
@@ -497,7 +497,7 @@ String _getCategoryFromRP(String rp) {
   Future<void> _loadWallsFromAPI() async {
     try {
       final response =
-          await http.get(Uri.parse("http://192.168.1.5:8765/geojson/Paths"));
+          await http.get(Uri.parse("http://10.10.67.90:8765/geojson/Paths"));
       if (response.statusCode == 200) {
         final pathsJson = json.decode(response.body);
         walls = (pathsJson['features'] as List).map<List<LatLng>>((feature) {
@@ -517,7 +517,7 @@ String _getCategoryFromRP(String rp) {
   Future<void> _loadPOIData() async {
     try {
       final response =
-          await http.get(Uri.parse("http://192.168.1.5:8765/geojson/POI"));
+          await http.get(Uri.parse("http://10.10.67.90:8765/geojson/POI"));
       if (response.statusCode == 200) {
         final poiJson = jsonDecode(response.body);
         // Lấy dữ liệu mô tả từ hàm getPOIDescriptions
