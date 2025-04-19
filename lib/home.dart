@@ -9,17 +9,17 @@ import 'package:flutter_application_1/models/map_model.dart';
 import 'package:flutter_application_1/POISelectionScreen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:photo_view/photo_view.dart';
 import 'package:wifi_scan/wifi_scan.dart';
 import 'dart:io';
 import 'package:flutter_application_1/ultils/wifi_scanner.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_application_1/ultils/permission.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:flutter_application_1/widgets/categories_widget.dart';
+import 'package:flutter_application_1/widgets/search_field_widget.dart';
+import 'package:flutter_application_1/widgets/category_button_widget.dart'; 
+import 'package:flutter_application_1/services/wifi_service.dart';
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 
@@ -34,7 +34,6 @@ class _HomePageState extends State<HomePage> {
   List<CategoryModel> categories = [];
   List<MapModel> maps = [];
   bool _isDialogDismissed = false;
-  PhotoViewComputedScale _photoViewScale = PhotoViewComputedScale.covered * 1;
   File? profileImage;
 
   late POISelectionScreen poiSelectionScreen;
@@ -43,7 +42,7 @@ class _HomePageState extends State<HomePage> {
   String? selectedMarkerRP;
 
   Timer? wifiScanTimer;
-
+  WifiService wifiService = WifiService();
   String? selectedCategory;
   @override
   void initState() {
@@ -51,18 +50,14 @@ class _HomePageState extends State<HomePage> {
     poiSelectionScreen = POISelectionScreen(userPositionCoordinates: userPositionCoordinates,selectedCategory: selectedCategory,context: context,startWifiTracking:startWifiTracking,stopWifiTracking:stopWifiTracking); // Initialize POISelectionScreen with user position coordinates
     getCategories();
     getMaps();
-    
     requestPermissions();
-
     WidgetsBinding.instance.addPostFrameCallback((_) => _showGuideDialog());
   }
 
 Future<void> startWifiTracking() async {
-  // Bắt đầu quét Wi-Fi mỗi 5 giây
   wifiScanTimer = Timer.periodic(Duration(seconds: 10), (timer) async {
-    // Quét Wi-Fi và gửi dữ liệu
-    await sendWiFiDataToServer();
-    print("✅ Đã quét Wi-Fi và gửi dữ liệu đến server");
+    List<WiFiAccessPoint> wifiNetworks = await WifiScanner.scanWiFi();
+    await wifiService.sendWiFiDataToServer(wifiNetworks);
   });
 }
 
@@ -82,7 +77,6 @@ Future<void> stopWifiTracking() async {
   }
 
   void _showGuideDialog() {
-
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -131,7 +125,7 @@ Future<void> stopWifiTracking() async {
     );
   }
 Future<void> sendWiFiDataToServer() async {
-  final url = Uri.parse('http://10.10.67.90:8765/predict'); // URL server Node.js
+  final url = Uri.parse('http://192.168.2.95:8765/predict'); // URL server Node.js
 
   try {
     // Quét các mạng Wi-Fi xung quanh
@@ -213,47 +207,14 @@ Future<void> sendWiFiDataToServer() async {
   }
 }
 Widget _categoriesMethod() {
-  return Container(
-    height: 50, // Set container height
-    child: SingleChildScrollView(  // Horizontal scrolling
-      scrollDirection: Axis.horizontal,  // Scroll horizontally
-      child: Row(
-        children: List.generate(categories.length, (index) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
-            child: ElevatedButton.icon(
-              onPressed: () {
-                setState(() {
-                    selectedCategory = categories[index].name;
-                    print('selectedCategory ${selectedCategory}');
-                    poiSelectionScreen.selectedCategory = selectedCategory;  // Cập nhật category được chọn
-                });
-              },
-              icon: Icon(
-                categories[index].icons.icon,  // Get category icon
-                color: Colors.green,
-              ),
-              label: Text(
-                categories[index].name,
-                style: GoogleFonts.openSans(
-                  fontWeight: FontWeight.w400,
-                  fontSize: 14,
-                  color: Colors.black,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Color.fromARGB(255, 255, 255, 255),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                minimumSize: Size(100, 40),
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              ),
-            ),
-          );
-        }),
-      ),
-    ),
+  return CategoriesWidget(
+    categories: categories,
+    onCategorySelected: (selectedCategory) {
+      setState(() {
+        this.selectedCategory = selectedCategory;
+        poiSelectionScreen.selectedCategory = selectedCategory;
+      });
+    },
   );
 }
 
@@ -330,7 +291,6 @@ Widget _categoriesMethod() {
   child: Icon(Icons.stop, color: Colors.white),
 ),
 SizedBox(height: 10),
-               
               ],
             ),
           ),
@@ -339,72 +299,34 @@ SizedBox(height: 10),
     );
   }
 
-  Widget _searchField() {
-    return Container(
-      margin: EdgeInsets.only(top: 40, left: 20, right: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-          )
-        ],
-      ),
-      child: GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => SuggestedPlacesScreen(
-                poiSelectionScreen: poiSelectionScreen,
-                sourcePage: 'HomePage', // Truyền sourcePage
-              ),
-            ),
-          );
-        },
-        child: AbsorbPointer(
-          child: TextFormField(
-            controller: searchPlaceController,
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              hintText: '   Tìm kiếm địa điểm ...',
-              hintStyle:
-                  GoogleFonts.openSans(color: Colors.grey[700], fontSize: 18),
-              suffixIcon: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.mic, color: Colors.black),
-                    onPressed: () {},
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.search, color: Colors.black),
-                    onPressed: () {},
-                  ),
-                ],
-              ),
-            ),
+Widget _searchField() {
+  return SearchFieldWidget(
+    controller: searchPlaceController,
+    onSearch: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SuggestedPlacesScreen(
+            poiSelectionScreen: poiSelectionScreen,
+            sourcePage: 'HomePage',
           ),
         ),
-      ),
-    );
-  }
+      );
+    },
+  );
+}
+
+
+
 
   Widget _categoryButton(String title, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-      child: ElevatedButton.icon(
-        onPressed: () {},
-        icon: Icon(icon, color: Colors.black),
-        label: Text(title, style: GoogleFonts.openSans(color: Colors.black)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      ),
-    );
+    return CategoryButtonWidget(
+    title: title,
+    icon: icon,
+    onPressed: () {
+      // Handle button press
+    },
+  );
   }
 
   NavigationBar _bottomNavBar() {
