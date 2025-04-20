@@ -5,6 +5,7 @@ import 'dart:math';
 class CompassService {
   double _compassHeading = 0.0;
 
+  // Hàm khởi tạo cảm biến la bàn
   void initCompass(Function(double) onHeadingChanged) {
     magnetometerEvents.listen((MagnetometerEvent event) {
       double heading = atan2(event.y, event.x) * (180 / pi);
@@ -12,9 +13,12 @@ class CompassService {
         heading += 360;
       }
       _compassHeading = heading;
-      onHeadingChanged(_compassHeading);
+      onHeadingChanged(_compassHeading);  // Gửi lại hướng la bàn
     });
   }
 
-  double getCompassHeading() => _compassHeading;
+  // Trả về giá trị góc la bàn hiện tại
+  double getCompassHeading() {
+    return _compassHeading;
+  }
 }

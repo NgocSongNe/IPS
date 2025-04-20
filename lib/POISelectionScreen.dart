@@ -8,9 +8,13 @@ import 'dart:math';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:sensors_plus/sensors_plus.dart'; // Thêm import này
-import 'dart:ui' as ui; // Import for Path and related classes with alias
-import 'package:flutter_application_1/services/cache_manager.dart';
+
+import 'dart:ui' as ui;
+import 'package:flutter_application_1/services/tts_service.dart';
+import 'package:flutter_application_1/services/compass_service.dart';
+import 'package:flutter_application_1/services/route_service.dart'; 
+import 'package:flutter_application_1/services/geometry_services.dart'; // Import GeometryService
+
 class POISelectionScreen {
   final MapController mapController = MapController();
   double currentZoom = 20.0;
@@ -26,7 +30,7 @@ class POISelectionScreen {
   List<List<LatLng>> hallways = [];
   List<LatLng> waypoints = [];
   final GeoJsonParser geoJsonParser = GeoJsonParser();
-  late LatLngBounds mapBounds; // Biến lưu giới hạn bản đồ
+  late LatLngBounds mapBounds; 
  
   String userPositionRP = "userPosition";
   List<String> directions = [];
@@ -36,16 +40,21 @@ class POISelectionScreen {
   String? secondSelectedMarkerRP;
 
   final BuildContext context;
-  final FlutterTts _flutterTts = FlutterTts();
+
    double _compassHeading = 0.0;
   final Function startWifiTracking;
   final Function stopWifiTracking;
 
    String? selectedCategory;
 
-  // Dữ liệu mẫu để mô phỏng vị trí User, sẽ được tạo từ waypoints
+  
   int mockPositionIndex = 0;
   List<LatLng> mockUserPositions = [];
+
+final TTSService ttsService = TTSService(); 
+final RouteService routeService = RouteService();  
+  final GeometryService geometryService = GeometryService(); 
+
 
   final Map<String, String> rpToFolderMap = {
     "1": "tv3_4",
@@ -121,46 +130,58 @@ String _getCategoryFromRP(String rp) {
         _initializeMockUserPositions(); // Khởi tạo mockUserPositions sau khi có waypoints
       });
     });
-    _initTts();
+    ttsService.initTts();
     _initCompass(); // Khởi tạo cảm biến la bàn
   }
 
-  // Khởi tạo cảm biến la bàn
   void _initCompass() {
-    magnetometerEvents.listen((MagnetometerEvent event) {
-      // Tính toán góc xoay từ cảm biến la bàn (theo trục Z)
-      double heading = atan2(event.y, event.x) * (180 / pi);
-      // Điều chỉnh góc để nằm trong khoảng 0-360 độ
-      if (heading < 0) {
-        heading += 360;
-      }
+    CompassService().initCompass((heading) {
       _compassHeading = heading;
-      // Cập nhật giao diện
-      (context as StatefulElement).markNeedsBuild();
     });
   }
-
-  Future<void> _initTts() async {
-    await _flutterTts.setLanguage("vi-VN");
-    await _flutterTts.setSpeechRate(1);
-    await _flutterTts.setVolume(1.0);
-    await _flutterTts.setPitch(1.0);
+void _initTts() {
+    ttsService.initTts();  // Gọi hàm khởi tạo TTS từ TTSService
   }
-  
 
-  Future<void> _speakDirections() async {
-    if (directions.isEmpty) return;
-    for (int i = 0; i < directions.length; i++) {
-      String direction = directions[i];
-      String distanceText = i < segmentDistances.length
-          ? " ${segmentDistances[i].toStringAsFixed(2)} mét"
-          : "";
-      String textToSpeak = "$direction$distanceText";
-      await _flutterTts.speak(textToSpeak);
-      await Future.delayed(Duration(seconds: 2));
+  // Hàm phát âm hướng dẫn từ TTSService
+  void _speakDirections() {
+     print("Starting to speak directions...");
+    ttsService.speakDirections(directions, segmentDistances);  // Gọi hàm phát âm từ TTSService
+  }
+  void _computeHallwayIntersections() {
+    geometryService.computeHallwayIntersections(hallways, waypoints);
+  }
+void _calculateDirections() {
+  directions.clear();
+  segmentDistances.clear();
+  if (originalRoute.length < 2) {
+    print("Original route has less than 2 points, cannot calculate directions.");
+    return;
+  }
+
+  for (int i = 0; i < originalRoute.length - 1; i++) {
+    double segmentDistance = routeService.calculateDistance(originalRoute[i], originalRoute[i + 1]);
+    segmentDistances.add(segmentDistance);
+
+    if (i == 0 || originalRoute.length < 3) {
+      directions.add("Đi thẳng đến đích");
+    } else {
+      String direction = routeService.getDirection(
+          originalRoute[i - 1], originalRoute[i], originalRoute[i + 1]);
+      directions.add(direction);
     }
   }
 
+  if (directions.isNotEmpty && directions.last != "Đi thẳng đến đích") {
+    directions.add("Đi thẳng đến đích");
+    if (originalRoute.length > 1) {
+      segmentDistances.add(routeService.calculateDistance(
+          originalRoute[originalRoute.length - 2], originalRoute.last));
+    }
+  }
+  print("Directions: $directions");
+  print("Segment Distances: $segmentDistances");
+}
   Future<List<String>> _getImagesFromFolder(String folderName) async {
     try {
       final manifestContent =
@@ -222,56 +243,6 @@ String _getCategoryFromRP(String rp) {
     };
   }
 
-  void _calculateDirections() {
-    directions.clear();
-    segmentDistances.clear();
-    if (originalRoute.length < 2) {
-      print("Original route has less than 2 points, cannot calculate directions.");
-      return;
-    }
-
-    for (int i = 0; i < originalRoute.length - 1; i++) {
-      double segmentDistance = _calculateDistance(originalRoute[i], originalRoute[i + 1]);
-      segmentDistances.add(segmentDistance);
-
-      if (i == 0 || originalRoute.length < 3) {
-        directions.add("Đi thẳng đến đích");
-      } else {
-        String direction = _getDirection(
-            originalRoute[i - 1], originalRoute[i], originalRoute[i + 1]);
-        directions.add(direction);
-      }
-    }
-
-    if (directions.isNotEmpty && directions.last != "Đi thẳng đến đích") {
-      directions.add("Đi thẳng đến đích");
-      if (originalRoute.length > 1) {
-        segmentDistances.add(_calculateDistance(
-            originalRoute[originalRoute.length - 2], originalRoute.last));
-      }
-    }
-  }
-
-  String _getDirection(LatLng p1, LatLng p2, LatLng p3) {
-    double v1x = p2.longitude - p1.longitude;
-    double v1y = p2.latitude - p1.latitude;
-    double v2x = p3.longitude - p2.longitude;
-    double v2y = p3.latitude - p2.latitude;
-
-    double crossProduct = v1x * v2y - v1y * v2x;
-    double dotProduct = v1x * v2x + v1y * v2y;
-    double mag1 = sqrt(v1x * v1x + v1y * v1y);
-    double mag2 = sqrt(v2x * v2x + v2y * v2y);
-    double angle = acos(dotProduct / (mag1 * mag2)) * 180 / pi;
-
-    if (angle < 10) {
-      return "Đi thẳng";
-    } else if (crossProduct > 0) {
-      return "Rẽ trái";
-    } else {
-      return "Rẽ phải";
-    }
-  }
 
   void _showDirections(BuildContext context) {
     showDialog(
@@ -330,7 +301,7 @@ String _getCategoryFromRP(String rp) {
     for (String endpoint in geoJsonEndpoints) {
       try {
         final response =
-            await http.get(Uri.parse("http://192.168.2.95:8765$endpoint"));
+            await http.get(Uri.parse("http://192.168.1.5:8765$endpoint"));
         if (response.statusCode == 200) {
           final geoJson = jsonDecode(response.body);
           if (geoJson['features'] is List) {
@@ -411,47 +382,6 @@ String _getCategoryFromRP(String rp) {
     _computeHallwayIntersections();
   }
 
-  void _computeHallwayIntersections() {
-    for (int i = 0; i < hallways.length; i++) {
-      for (int j = i + 1; j < hallways.length; j++) {
-        var hallway1 = hallways[i];
-        var hallway2 = hallways[j];
-        for (int k = 0; k < hallway1.length - 1; k++) {
-          for (int l = 0; l < hallway2.length - 1; l++) {
-            LatLng? intersection = _findIntersection(
-              hallway1[k], hallway1[k + 1],
-              hallway2[l], hallway2[l + 1],
-            );
-            if (intersection != null && !waypoints.contains(intersection)) {
-              waypoints.add(intersection);
-              print("Added intersection waypoint: $intersection");
-            }
-          }
-        }
-      } 
-    }
-  }
-
-  LatLng? _findIntersection(LatLng p1, LatLng q1, LatLng p2, LatLng q2) {
-    double x1 = p1.latitude, y1 = p1.longitude;
-    double x2 = q1.latitude, y2 = q1.longitude;
-    double x3 = p2.latitude, y3 = p2.longitude;
-    double x4 = q2.latitude, y4 = q2.longitude;
-
-    double denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-    if (denom == 0) return null;
-
-    double t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
-    double u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
-
-    if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
-      double x = x1 + t * (x2 - x1);
-      double y = y1 + t * (y2 - y1);
-      return LatLng(x, y);
-    }
-    return null;
-  }
-
   void _focusOnPOIs() {
     if (geoJsonParser.markers.isNotEmpty) {
       final latitudes =
@@ -497,7 +427,7 @@ String _getCategoryFromRP(String rp) {
   Future<void> _loadWallsFromAPI() async {
     try {
       final response =
-          await http.get(Uri.parse("http://192.168.2.95:8765/geojson/Paths"));
+          await http.get(Uri.parse("http://192.168.1.5:8765/geojson/Paths"));
       if (response.statusCode == 200) {
         final pathsJson = json.decode(response.body);
         walls = (pathsJson['features'] as List).map<List<LatLng>>((feature) {
@@ -517,7 +447,7 @@ String _getCategoryFromRP(String rp) {
   Future<void> _loadPOIData() async {
     try {
       final response =
-          await http.get(Uri.parse("http://192.168.2.95:8765/geojson/POI"));
+          await http.get(Uri.parse("http://192.168.1.5:8765/geojson/POI"));
       if (response.statusCode == 200) {
         final poiJson = jsonDecode(response.body);
         // Lấy dữ liệu mô tả từ hàm getPOIDescriptions
@@ -577,7 +507,50 @@ String _getCategoryFromRP(String rp) {
       print("Error loading POI data: $e");
     }
   }
+// Hàm tạo route dọc theo các điểm, sử dụng cho việc vẽ các điểm trong khoảng cách
+  List<Marker> createDottedRoute(List<LatLng> route, {double dotSpacing = 5.0, double dotSize = 10.0}) {
+    List<Marker> dottedMarkers = [];
 
+    if (route.length < 2) return dottedMarkers;
+
+    for (int i = 0; i < route.length - 1; i++) {
+      LatLng start = route[i];
+      LatLng end = route[i + 1];
+      double distance = routeService.calculateDistance(start, end);
+
+      int numDots = (distance / dotSpacing).floor();
+      if (numDots == 0) numDots = 1;
+
+      for (int j = 0; j <= numDots; j++) {
+        double t = j / numDots;
+        double lat = start.latitude + (end.latitude - start.latitude) * t;
+        double lng = start.longitude + (end.longitude - start.longitude) * t;
+
+        double opacity = (1.0 - (j / numDots)) * 0.6;
+        dottedMarkers.add(
+          Marker(
+            point: LatLng(lat, lng),
+            width: dotSize,
+            height: dotSize,
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.blue
+                    .withOpacity(opacity), // Đổi màu thành xanh dương
+                border: Border.all(
+                  color: Colors.blue.withOpacity(
+                      opacity * 0.5), // Đổi màu viền thành xanh dương
+                  width: 1.0,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    return dottedMarkers;
+  }
   Map<String, List<Map<String, dynamic>>> _generateGraph() {
     Map<String, List<Map<String, dynamic>>> generatedGraph = {};
 
@@ -597,7 +570,7 @@ String _getCategoryFromRP(String rp) {
         LatLng wp2Coords = wp2["coordinates"];
 
         if (!_isPathBlocked(wp1Coords, wp2Coords)) {
-          double distance = _calculateDistance(wp1Coords, wp2Coords);
+          double distance = routeService.calculateDistance(wp1Coords, wp2Coords);
           generatedGraph[wp1RP]!.add({"rp": wp2RP, "distance": distance});
           print("Added edge between waypoints: $wp1RP -> $wp2RP, distance: $distance");
         }
@@ -612,7 +585,7 @@ String _getCategoryFromRP(String rp) {
       for (var wp in poiList.where((p) => p["rp"].startsWith("wp_"))) {
         LatLng wpCoords = wp["coordinates"];
         if (!_isPathBlocked(poiCoords, wpCoords)) {
-          double distance = _calculateDistance(poiCoords, wpCoords);
+          double distance = routeService.calculateDistance(poiCoords, wpCoords);
           nearestWaypoints.add({
             "rp": wp["rp"],
             "coordinates": wpCoords,
@@ -638,7 +611,7 @@ String _getCategoryFromRP(String rp) {
           String otherRP = otherPoi["rp"];
           LatLng otherCoords = otherPoi["coordinates"];
           if (!_isPathBlocked(poiCoords, otherCoords)) {
-            double distance = _calculateDistance(poiCoords, otherCoords);
+            double distance = routeService.calculateDistance(poiCoords, otherCoords);
             generatedGraph[poiRP]!.add({"rp": otherRP, "distance": distance});
             print("Added direct edge: $poiRP -> $otherRP, distance: $distance");
           }
@@ -722,7 +695,7 @@ String _getCategoryFromRP(String rp) {
     final Set<String> closedSet = {};
 
     gScore[start] = 0;
-    fScore[start] = _heuristic(start, end);
+    fScore[start] = routeService.heuristic(start, end,poiList);
 
     while (openSet.isNotEmpty) {
       openSet.sort((a, b) => fScore[a]!.compareTo(fScore[b]!));
@@ -759,7 +732,7 @@ String _getCategoryFromRP(String rp) {
 
         cameFrom[neighborRP] = current;
         gScore[neighborRP] = tentativeGScore;
-        fScore[neighborRP] = gScore[neighborRP]! + _heuristic(neighborRP, end);
+        fScore[neighborRP] = gScore[neighborRP]! + routeService.heuristic(neighborRP, end,poiList);
       }
     }
 
@@ -767,35 +740,6 @@ String _getCategoryFromRP(String rp) {
     return [];
   }
 
-  double _heuristic(String current, String goal) {
-    final currentPoi = poiList.firstWhere((poi) => poi['rp'] == current);
-    final goalPoi = poiList.firstWhere((poi) => poi['rp'] == goal);
-    final currentCoords = currentPoi['coordinates'] as LatLng;
-    final goalCoords = goalPoi['coordinates'] as LatLng;
-    return _calculateDistance(currentCoords, goalCoords);
-  }
-
-  double _calculateDistance(LatLng point1, LatLng point2) {
-    const earthRadius = 6371;
-    double dLat = (point2.latitude - point1.latitude) * (pi / 180);
-    double dLon = (point2.longitude - point1.longitude) * (pi / 180);
-    double a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(point1.latitude * (pi / 180)) *
-            cos(point2.latitude * (pi / 180)) *
-            sin(dLon / 2) *
-            sin(dLon / 2);
-    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return earthRadius * c * 1000;
-  }
-
-  double _calculatePathDistance(List<LatLng> route) {
-    if (route.length < 2) return 0.0;
-    double totalDistance = 0.0;
-    for (var i = 0; i < route.length - 1; i++) {
-      totalDistance += _calculateDistance(route[i], route[i + 1]);
-    }
-    return totalDistance;
-  }
 
   List<LatLng> _smoothRoute(List<LatLng> route, {int segmentsPerPoint = 10}) {
     if (route.length < 2) return route;
@@ -864,7 +808,7 @@ String _getCategoryFromRP(String rp) {
     for (int i = 0; i < route.length - 1; i++) {
       LatLng start = route[i];
       LatLng end = route[i + 1];
-      double distance = _calculateDistance(start, end);
+      double distance = routeService.calculateDistance(start, end);
 
       int numDots = (distance / dotSpacing).floor();
       if (numDots == 0) numDots = 1;
@@ -906,7 +850,7 @@ String _getCategoryFromRP(String rp) {
       originalRoute = _findShortestPath(startPOI!, endPOI!);
       if (originalRoute.isNotEmpty) {
         selectedRoute = _smoothRoute(originalRoute, segmentsPerPoint: 10);
-        pathDistance = _calculatePathDistance(originalRoute);
+        pathDistance = routeService.calculatePathDistance(originalRoute);
         _calculateDirections();
         if (showDirections) {
           _showDirections(context);
@@ -927,7 +871,7 @@ String _getCategoryFromRP(String rp) {
       originalRoute = _findShortestPath(startPOI!, endPOI!);
       if (originalRoute.isNotEmpty) {
         selectedRoute = _smoothRoute(originalRoute, segmentsPerPoint: 10);
-        pathDistance = _calculatePathDistance(originalRoute); // Tính khoảng cách trên đường gốc
+        pathDistance = routeService.calculatePathDistance(originalRoute); // Tính khoảng cách trên đường gốc
         _calculateDirections();
         if (showDirections) {
           _showDirections(context);
@@ -1009,7 +953,7 @@ String _getCategoryFromRP(String rp) {
                       secondSelectedMarkerRP = rp;
 
                       _drawRouteCD(context, setStateCallback,
-                          showDirections: true);
+                      showDirections: true);
                       Navigator.of(context).pop();
                       startWifiTracking();
                     },
@@ -1063,7 +1007,7 @@ String _getCategoryFromRP(String rp) {
                       );
                     },
                     icon: const Icon(Icons.info, color: Colors.white),
-                    label: Text(
+                    label: const Text(
                       "Thông tin",
                       style: TextStyle(color: Colors.white),
                     ),
@@ -1160,7 +1104,7 @@ String _getCategoryFromRP(String rp) {
           ),
           children: [
             TileLayer(
-              urlTemplate: "https://api.mapbox.com/styles/v1/mapbox/outdoors-v11/mapbox/outdoors-v11'/tiles/{z}/{x}/{y}?access_token={accessToken}",
+              urlTemplate: "https://api.mapbox.com/styles/v1/mapbox/outdoors-v11/tiles/{z}/{x}/{y}?access_token={accessToken}",
               subdomains: ['a', 'b', 'c'],
               additionalOptions: {
                 'accessToken': 'pk.eyJ1Ijoic29uZ3RhbmczMDA5IiwiYSI6ImNtODA1NGZkYjA0c2kya29rMWZxYm03MWoifQ.Us8IrAhRJNDO-5qJnfAoIg'
@@ -1193,7 +1137,7 @@ String _getCategoryFromRP(String rp) {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                            padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                             decoration: BoxDecoration(
                                color: isSelected
                 ? Colors.green.withOpacity(0.7) // Green if selected
@@ -1248,7 +1192,7 @@ String _getCategoryFromRP(String rp) {
                   point: userPositionCoordinates,
                   width: 100.0,
                   height: 100.0,
-                  child: Transform.rotate(
+                  child:  Transform.rotate(
                     angle: -_compassHeading * pi / 180, // Xoay theo góc la bàn
                     child: CustomPaint(
                       size: Size(100, 100),
@@ -1265,7 +1209,7 @@ String _getCategoryFromRP(String rp) {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        padding: EdgeInsets.symmetric(
+                        padding: const EdgeInsets.symmetric(
                             horizontal: 4.0, vertical: 2.0),
                         decoration: BoxDecoration(
                           color: selectedMarkerRP == userPositionRP
