@@ -270,7 +270,7 @@ Widget _searchField() {
           setState(() {
             currentPageIndex = index;
           });
-          if (index == 1) {
+          if (index == 2) {
             Navigator.push(
               context,
               MaterialPageRoute(
