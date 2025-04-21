@@ -182,6 +182,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.4.1"
+  flutter_carousel_widget:
+    dependency: "direct main"
+    description:
+      name: flutter_carousel_widget
+      sha256: "9476c39f1fcff57fb387a1a3c379a01f7c73eca4179ac1b41c07b7181fadec14"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.3.0"
   flutter_compass:
     dependency: "direct main"
     description:
@@ -404,10 +412,10 @@ packages:
     dependency: transitive
     description:
       name: intl
-      sha256: "3df61194eb431efc39c4ceba583b95633a403f46c9fd341e550ce0bfa50e9aa5"
+      sha256: "910f85bce16fb5c6f614e117efa303e85a1731bb0081edf3604a2ae6e9a3cc91"
       url: "https://pub.dev"
     source: hosted
-    version: "0.20.2"
+    version: "0.17.0"
   latlong2:
     dependency: "direct main"
     description:
