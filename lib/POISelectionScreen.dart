@@ -14,7 +14,6 @@ import 'package:flutter_application_1/services/tts_service.dart';
 import 'package:flutter_application_1/services/compass_service.dart';
 import 'package:flutter_application_1/services/route_service.dart'; 
 import 'package:flutter_application_1/services/geometry_services.dart'; // Import GeometryService
-
 class POISelectionScreen {
   final MapController mapController = MapController();
   double currentZoom = 20.0;
@@ -132,13 +131,21 @@ String _getCategoryFromRP(String rp) {
     });
     ttsService.initTts();
     _initCompass(); // Khởi tạo cảm biến la bàn
+
   }
 
+
+void setMapPosition(LatLng position, double zoom) {
+  userPositionCoordinates = position;
+  currentZoom = zoom;
+  mapController.move(position, zoom);  // Cập nhật vị trí và mức zoom của bản đồ
+}
   void _initCompass() {
     CompassService().initCompass((heading) {
       _compassHeading = heading;
     });
   }
+
 void _initTts() {
     ttsService.initTts();  // Gọi hàm khởi tạo TTS từ TTSService
   }
@@ -1075,7 +1082,7 @@ void _calculateDirections() {
           mapController: mapController,
           options: MapOptions(
             center: userPositionCoordinates,
-            zoom: currentZoom,
+            zoom: 22.0,
             minZoom: 17.0,
             maxZoom: 23.0,
             interactiveFlags: InteractiveFlag.all,

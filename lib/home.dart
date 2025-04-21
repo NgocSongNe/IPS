@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_application_1/Location.dart';
-import 'package:flutter_application_1/account.dart';
+import 'package:flutter_application_1/dashboard.dart';
 import 'package:flutter_application_1/information.dart';
 import 'package:flutter_application_1/models/category_model.dart';
 import 'package:flutter_application_1/models/map_model.dart';
@@ -15,7 +15,9 @@ import 'package:flutter_application_1/ultils/wifi_scanner.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_application_1/ultils/permission.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_application_1/widgets/categories_widget.dart';
 import 'package:flutter_application_1/widgets/search_field_widget.dart';
 import 'package:flutter_application_1/widgets/category_button_widget.dart'; 
@@ -29,7 +31,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   TextEditingController searchPlaceController = TextEditingController();
-  int currentPageIndex = 0;
+  int currentPageIndex = 1;
   bool showLabel = true;
   List<CategoryModel> categories = [];
   List<MapModel> maps = [];
@@ -78,7 +80,13 @@ class _HomePageState extends State<HomePage> {
   void stopWifiTracking() async {
     await wifiService.stopWifiTracking(wifiScanTimer);
   }
-  void _showGuideDialog() {
+    void _showGuideDialog() async {
+    // Lấy instance của SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    // Kiểm tra xem bảng đã được hiển thị chưa
+    bool hasShownGuide = prefs.getBool('hasShownSwipeGuide') ?? false;
+
+    if (!hasShownGuide) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -90,8 +98,10 @@ class _HomePageState extends State<HomePage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text("Vuốt để di chuyển",
-                  style: GoogleFonts.openSans(fontSize: 18)),
+                Text(
+                  "Vuốt để di chuyển",
+                  style: GoogleFonts.openSans(fontSize: 18),
+                ),
               SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -103,8 +113,10 @@ class _HomePageState extends State<HomePage> {
               ),
               SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {
+                  onPressed: () async {
                   Navigator.of(context).pop();
+                    // Lưu trạng thái đã hiển thị
+                    await prefs.setBool('hasShownSwipeGuide', true);
                   Future.delayed(Duration(milliseconds: 300), () {
                     setState(() {
                       _isDialogDismissed = true;
@@ -117,8 +129,10 @@ class _HomePageState extends State<HomePage> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: Text("OK",
-                    style: GoogleFonts.openSans(color: Colors.white)),
+                  child: Text(
+                    "OK",
+                    style: GoogleFonts.openSans(color: Colors.white),
+                  ),
               ),
             ],
           ),
@@ -126,6 +140,7 @@ class _HomePageState extends State<HomePage> {
       },
     );
   }
+    }
 Widget _categoriesMethod() {
   return CategoriesWidget(
     categories: categories,
@@ -263,44 +278,46 @@ Widget _searchField() {
   );
   }
 
+
   NavigationBar _bottomNavBar() {
     return NavigationBar(
       onDestinationSelected: (int index) {
-        if (index != currentPageIndex) {
-          setState(() {
-            currentPageIndex = index;
-          });
-          if (index == 2) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => InformationPage(
-                  poiSelectionScreen:
-                      poiSelectionScreen, // Truyền poiSelectionScreen
-                ),
-              ),
-            );
-          } else if (index == 2) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => AccountPage()),
-            );
-          }
+        setState(() {
+          currentPageIndex = index;
+        });
+        if (index == 0) {
+           Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => DashboardScreen()),
+          );
+           
+        } else if (index == 1) {
+       
+        } else if (index == 2) {
+           Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => InformationPage()),
+          );
         }
       },
       indicatorColor: Colors.amber,
       selectedIndex: currentPageIndex,
-      destinations: const [
+      destinations: const <Widget>[
         NavigationDestination(
           selectedIcon: Icon(Icons.home),
           icon: Icon(Icons.home_outlined),
           label: 'Trang chủ',
         ),
         NavigationDestination(
-          icon: Badge(child: Icon(Icons.book_online_outlined)),
+          icon: Badge(child: Icon(Icons.map)),
+          label: 'Map',
+        ),
+        NavigationDestination(
+          icon: Badge(
+            child: Icon(Icons.info_outline),
+          ),
           label: 'Thông tin',
         ),
-        
       ],
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/dashboard.dart';
 import 'package:flutter_application_1/welcome_screen.dart';
 import 'package:flutter_application_1/ultils/permission.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -46,7 +47,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(fontFamily: 'OpenSans'),
-      home: WelcomePage(),
+      home: DashboardScreen(),
     );
   }
 }
