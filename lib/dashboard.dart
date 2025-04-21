@@ -53,7 +53,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     _loadPosts();
     _loadSuggestedPOIs();
 
-    // Khởi tạo animation cho hiệu ứng fade-in
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(seconds: 1),
@@ -66,6 +65,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   void dispose() {
     _animationController.dispose();
+    wifiScanTimer?.cancel();
     super.dispose();
   }
 
@@ -73,6 +73,12 @@ class _DashboardScreenState extends State<DashboardScreen>
     wifiScanTimer = Timer.periodic(Duration(seconds: 15), (timer) async {
       await sendWiFiDataToServer();
       print("✅ Đã quét Wi-Fi và gửi dữ liệu đến server");
+
+      // Chuyển hướng đến HomePage sau khi bắt đầu quét Wi-Fi
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage()),
+      );
     });
   }
 
@@ -242,8 +248,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                 children: [
                   _header(),
                   SizedBox(height: 20),
-                  // _libraryBanner(),
-                  // SizedBox(height: 20),
                   _carouselSection(),
                   SizedBox(height: 20),
                   _newsSection(),
@@ -284,14 +288,14 @@ class _DashboardScreenState extends State<DashboardScreen>
             children: [
               Text(
                 'Chào mừng đến với',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.openSans(
                   fontSize: 16,
                   color: Colors.white70,
                 ),
               ),
               Text(
                 'Thư viện DLU',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.openSans(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -299,70 +303,39 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
               Text(
                 'Hôm nay: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.openSans(
                   fontSize: 14,
                   color: Colors.white70,
                 ),
               ),
             ],
           ),
-          
+          GestureDetector(
+            onTap: () {
+              // Chuyển hướng đến HomePage khi nhấn nút tìm kiếm
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => HomePage()),
+              );
+            },
+            child: AnimatedContainer(
+              duration: Duration(milliseconds: 300),
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.2),
+              ),
+              child: Icon(
+                Icons.search,
+                size: 30,
+                color: Colors.white,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
-
-  // Widget _libraryBanner() {
-  //   return Container(
-  //     padding: EdgeInsets.all(16),
-  //     decoration: BoxDecoration(
-  //       gradient: LinearGradient(
-  //         colors: [Colors.teal.shade400, Colors.cyan.shade400],
-  //         begin: Alignment.topLeft,
-  //         end: Alignment.bottomRight,
-  //       ),
-  //       borderRadius: BorderRadius.circular(15),
-  //       boxShadow: [
-  //         BoxShadow(
-  //           color: Colors.black.withOpacity(0.2),
-  //           blurRadius: 10,
-  //           offset: Offset(0, 5),
-  //         ),
-  //       ],
-  //     ),
-  //     child: Row(
-  //       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //       children: [
-  //         Column(
-  //           crossAxisAlignment: CrossAxisAlignment.start,
-  //           children: [
-  //             Text(
-  //               'Thư viện DLU',
-  //               style: GoogleFonts.poppins(
-  //                 fontSize: 20,
-  //                 fontWeight: FontWeight.bold,
-  //                 color: Colors.white,
-  //               ),
-  //             ),
-  //             SizedBox(height: 8),
-  //             Text(
-  //               'Không gian hiện đại, tài liệu phong phú, hỗ trợ học tập và nghiên cứu.',
-  //               style: GoogleFonts.poppins(
-  //                 fontSize: 14,
-  //                 color: Colors.white,
-  //               ),
-  //             ),
-  //           ],
-  //         ),
-  //         Icon(
-  //           Icons.library_books,
-  //           size: 40,
-  //           color: Colors.white,
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
 
   Widget _carouselSection() {
     return FlutterCarousel(
@@ -422,7 +395,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           children: [
             Text(
               'Được gợi ý gần đây',
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.openSans(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Colors.teal.shade800,
@@ -432,14 +405,10 @@ class _DashboardScreenState extends State<DashboardScreen>
               icon: Icon(Icons.arrow_forward_ios,
                   size: 16, color: Colors.teal.shade800),
               onPressed: () {
-                Navigator.push(
+                // Chuyển hướng đến HomePage khi nhấn mũi tên
+                Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => SuggestedPlacesScreen(
-                      poiSelectionScreen: poiSelectionScreen,
-                      sourcePage: 'DashboardScreen',
-                    ),
-                  ),
+                  MaterialPageRoute(builder: (context) => HomePage()),
                 );
               },
             ),
@@ -453,9 +422,13 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget _buildSuggestedPOICard(Map<String, dynamic> poi) {
     return GestureDetector(
       onTap: () {
-        poiSelectionScreen.onPOITap(poi['rp'], context, () {
-          setState(() {});
-        });
+        // Chọn điểm này trên bản đồ
+        poiSelectionScreen.onPOITap(poi['rp'], context, () {});
+        // Chuyển hướng ngay lập tức đến HomePage
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomePage()),
+        );
       },
       child: AnimatedContainer(
         duration: Duration(milliseconds: 300),
@@ -498,7 +471,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 children: [
                   Text(
                     poi['name'] ?? 'Unknown',
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.openSans(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: Colors.teal.shade800,
@@ -507,7 +480,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   SizedBox(height: 4),
                   Text(
                     poi['description'] ?? 'Không có mô tả',
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.openSans(
                       fontSize: 14,
                       color: Colors.grey.shade700,
                     ),
@@ -535,7 +508,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           children: [
             Text(
               'Tin tức',
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.openSans(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Colors.teal.shade800,
@@ -548,9 +521,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => InformationPage(
-                      poiSelectionScreen: poiSelectionScreen,
-                    ),
+                    builder: (context) => InformationPage(),
                   ),
                 );
               },
@@ -640,7 +611,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   caption.length > 50
                       ? '${caption.substring(0, 50)}...'
                       : caption,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.openSans(
                       fontSize: 14, color: Colors.grey.shade800),
                 ),
               ),
@@ -654,42 +625,41 @@ class _DashboardScreenState extends State<DashboardScreen>
   NavigationBar _bottomNavBar() {
     return NavigationBar(
       onDestinationSelected: (int index) {
-        setState(() {
-          currentPageIndex = index;
-        });
-        if (index == 0) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => DashboardScreen()),
-          );
-        } else if (index == 1) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => HomePage()),
-          );
-        } else if (index == 2) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => InformationPage()),
-          );
+        if (index != currentPageIndex) {
+          setState(() {
+            currentPageIndex = index;
+          });
+          if (index == 1) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => HomePage()),
+            );
+          } else if (index == 2) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => InformationPage()),
+            );
+          }
         }
       },
-      indicatorColor: Colors.amber,
+      indicatorColor: Colors.teal.shade200,
       selectedIndex: currentPageIndex,
+      backgroundColor: Colors.white,
+      elevation: 10,
       destinations: const <Widget>[
         NavigationDestination(
-          selectedIcon: Icon(Icons.home),
-          icon: Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home, color: Colors.teal),
+          icon: Icon(Icons.home_outlined, color: Colors.grey),
           label: 'Trang chủ',
         ),
         NavigationDestination(
-          icon: Badge(child: Icon(Icons.book_online_outlined)),
+          selectedIcon: Icon(Icons.map, color: Colors.teal),
+          icon: Badge(child: Icon(Icons.map_outlined, color: Colors.grey)),
           label: 'Bản đồ',
         ),
         NavigationDestination(
-          icon: Badge(
-            child: Icon(Icons.manage_accounts_outlined),
-          ),
+          selectedIcon: Icon(Icons.info, color: Colors.teal),
+          icon: Badge(child: Icon(Icons.info_outline, color: Colors.grey)),
           label: 'Thông tin',
         ),
       ],

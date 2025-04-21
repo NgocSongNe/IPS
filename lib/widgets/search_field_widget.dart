@@ -34,10 +34,6 @@ class SearchFieldWidget extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: Icon(Icons.mic, color: Colors.black),
-                  onPressed: onSearch, // Giữ logic tìm kiếm tại đây
-                ),
-                IconButton(
                   icon: Icon(Icons.search, color: Colors.black),
                   onPressed: onSearch, // Giữ logic tìm kiếm tại đây
                 ),
