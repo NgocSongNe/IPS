@@ -6,13 +6,12 @@ import 'package:flutter_application_1/home.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_application_1/models/category_model.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter_application_1/POISelectionScreen.dart'; // Import POISelectionScreen
+import 'package:flutter_application_1/POISelectionScreen.dart';
 import 'Location.dart';
 
 class InformationPage extends StatefulWidget {
-  final String? poiName; // Tham số để nhận tên địa điểm từ trang Home
-  final POISelectionScreen?
-      poiSelectionScreen; // Nhận poiSelectionScreen từ HomePage
+  final String? poiName;
+  final POISelectionScreen? poiSelectionScreen;
 
   const InformationPage({super.key, this.poiName, this.poiSelectionScreen});
 
@@ -25,7 +24,6 @@ class _InformationPageState extends State<InformationPage> {
   List<Widget> postCards = [];
   List<CategoryModel> categories = [];
 
-  // Danh sách các thư mục chứa hình ảnh cho từng mục
   final Map<String, String> folderMap = {
     "TV3,4": "tv3_4",
     "Cửa ra vào": "cua_ra_vao",
@@ -38,7 +36,6 @@ class _InformationPageState extends State<InformationPage> {
     "Phòng tạp chí": "phong_tap_chi",
   };
 
-  // Lưu trữ thông tin bài đăng để điều hướng
   final Map<String, Map<String, String>> postMap = {};
 
   @override
@@ -46,7 +43,6 @@ class _InformationPageState extends State<InformationPage> {
     super.initState();
     getCategories();
 
-    // Khởi tạo các bài đăng và ánh xạ với folderName
     postCards = [
       _buildPostCard(
         caption:
@@ -95,7 +91,6 @@ class _InformationPageState extends State<InformationPage> {
       ),
     ];
 
-    // Tạo ánh xạ từ folderName đến thông tin bài đăng
     postMap['tv3_4'] = {
       'caption':
           'Phòng máy tính TV3 và TV4 với hệ thống trang thiết bị hiện đại, phòng học được trang bị các bộ máy tính được kết nối Internet chất lượng cao. Phòng học đáp ứng được các nhu cầu về học tập và làm việc một cách ổn định và mượt mà.',
@@ -142,10 +137,8 @@ class _InformationPageState extends State<InformationPage> {
       'folderName': 'phong_tap_chi',
     };
 
-    // Kiểm tra nếu có poiName, điều hướng đến bài đăng tương ứng
     if (widget.poiName != null) {
       String? folderName;
-      // Tìm folderName tương ứng với poiName
       folderMap.forEach((key, value) {
         if (key == widget.poiName) {
           folderName = value;
@@ -173,7 +166,6 @@ class _InformationPageState extends State<InformationPage> {
     categories = CategoryModel.getCategories();
   }
 
-  // Hàm lấy danh sách hình ảnh từ thư mục
   Future<List<String>> _getImagesFromFolder(String folderName) async {
     try {
       final manifestContent =
@@ -294,8 +286,6 @@ class _InformationPageState extends State<InformationPage> {
           children: [
             _searchField(),
             SizedBox(height: 20),
-            // _categoriesMethod(),
-            SizedBox(height: 20),
             _buildPostCards(),
           ],
         ),
@@ -331,7 +321,7 @@ class _InformationPageState extends State<InformationPage> {
             MaterialPageRoute(
               builder: (context) => SuggestedPlacesScreen(
                 poiSelectionScreen: widget.poiSelectionScreen,
-                sourcePage: 'InformationPage', // Truyền sourcePage
+                sourcePage: 'InformationPage',
               ),
             ),
           );
@@ -358,43 +348,6 @@ class _InformationPageState extends State<InformationPage> {
       ),
     );
   }
-
-  // Container _categoriesMethod() {
-  //   return Container(
-  //     height: 50,
-  //     child: SingleChildScrollView(
-  //       scrollDirection: Axis.horizontal,
-  //       child: Row(
-  //         children: List.generate(categories.length, (index) {
-  //           return Padding(
-  //             padding:
-  //                 const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5.0),
-  //             child: ElevatedButton.icon(
-  //               onPressed: () {},
-  //               icon: categories[index].icons,
-  //               label: Text(
-  //                 categories[index].name,
-  //                 style: GoogleFonts.openSans(
-  //                   fontWeight: FontWeight.w400,
-  //                   fontSize: 14,
-  //                   color: Colors.black,
-  //                 ),
-  //               ),
-  //               style: ElevatedButton.styleFrom(
-  //                 backgroundColor: Color.fromARGB(255, 255, 255, 255),
-  //                 shape: RoundedRectangleBorder(
-  //                   borderRadius: BorderRadius.circular(10),
-  //                 ),
-  //                 minimumSize: Size(100, 40),
-  //                 padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-  //               ),
-  //             ),
-  //           );
-  //         }),
-  //       ),
-  //     ),
-  //   );
-  // }
 
   Widget _buildPostCards() {
     return Column(
@@ -484,7 +437,6 @@ class _InformationPageState extends State<InformationPage> {
   }
 
   Widget _buildImageCollage(List<String> images) {
-    final double collageWidth = MediaQuery.of(context).size.width - 32;
     const double collageHeight = 200;
     const double gap = 2.0;
 
@@ -508,36 +460,22 @@ class _InformationPageState extends State<InformationPage> {
       );
     }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(5),
-      child: Container(
-        width: collageWidth,
-        height: collageHeight,
-        color: Colors.white,
-        child: images.length == 1
-            ? buildImage(
-                images[0],
-                width: collageWidth,
-                height: collageHeight,
-              )
-            : images.length == 2
-                ? Row(
-                    mainAxisSize: MainAxisSize.max,
-                    children: [
-                      buildImage(
-                        images[0],
-                        width: (collageWidth - gap) / 2,
-                        height: collageHeight,
-                      ),
-                      SizedBox(width: gap),
-                      buildImage(
-                        images[1],
-                        width: (collageWidth - gap) / 2,
-                        height: collageHeight,
-                      ),
-                    ],
+    return ClipRect( // Thêm ClipRect để cắt nội dung tràn
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final double collageWidth = constraints.maxWidth; // Chiều rộng khả dụng
+
+          return Container(
+            width: collageWidth,
+            height: collageHeight,
+            color: Colors.white,
+            child: images.length == 1
+                ? buildImage(
+                    images[0],
+                    width: collageWidth,
+                    height: collageHeight,
                   )
-                : images.length == 3
+                : images.length == 2
                     ? Row(
                         mainAxisSize: MainAxisSize.max,
                         children: [
@@ -547,82 +485,101 @@ class _InformationPageState extends State<InformationPage> {
                             height: collageHeight,
                           ),
                           SizedBox(width: gap),
-                          Column(
-                            mainAxisSize: MainAxisSize.max,
-                            children: [
-                              buildImage(
-                                images[1],
-                                width: (collageWidth - gap) / 2,
-                                height: (collageHeight - gap) / 2,
-                              ),
-                              SizedBox(height: gap),
-                              buildImage(
-                                images[2],
-                                width: (collageWidth - gap) / 2,
-                                height: (collageHeight - gap) / 2,
-                              ),
-                            ],
+                          buildImage(
+                            images[1],
+                            width: (collageWidth - gap) / 2,
+                            height: collageHeight,
                           ),
                         ],
                       )
-                    : Row(
-                        mainAxisSize: MainAxisSize.max,
-                        children: [
-                          Column(
+                    : images.length == 3
+                        ? Row(
                             mainAxisSize: MainAxisSize.max,
                             children: [
                               buildImage(
                                 images[0],
                                 width: (collageWidth - gap) / 2,
-                                height: (collageHeight - gap) / 2,
+                                height: collageHeight,
                               ),
-                              SizedBox(height: gap),
-                              buildImage(
-                                images[1],
-                                width: (collageWidth - gap) / 2,
-                                height: (collageHeight - gap) / 2,
-                              ),
-                            ],
-                          ),
-                          SizedBox(width: gap),
-                          Column(
-                            mainAxisSize: MainAxisSize.max,
-                            children: [
-                              buildImage(
-                                images[2],
-                                width: (collageWidth - gap) / 2,
-                                height: (collageHeight - gap) / 2,
-                              ),
-                              SizedBox(height: gap),
-                              Stack(
+                              SizedBox(width: gap),
+                              Column(
+                                mainAxisSize: MainAxisSize.max,
                                 children: [
                                   buildImage(
-                                    images[3],
+                                    images[1],
                                     width: (collageWidth - gap) / 2,
                                     height: (collageHeight - gap) / 2,
                                   ),
-                                  if (images.length > 4)
-                                    Positioned.fill(
-                                      child: Container(
-                                        color: Colors.black.withOpacity(0.5),
-                                        child: Center(
-                                          child: Text(
-                                            '+${images.length - 4}',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 24,
-                                              fontWeight: FontWeight.bold,
+                                  SizedBox(height: gap),
+                                  buildImage(
+                                    images[2],
+                                    width: (collageWidth - gap) / 2,
+                                    height: (collageHeight - gap) / 2,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          )
+                        : Row(
+                            mainAxisSize: MainAxisSize.max,
+                            children: [
+                              Column(
+                                mainAxisSize: MainAxisSize.max,
+                                children: [
+                                  buildImage(
+                                    images[0],
+                                    width: (collageWidth - gap) / 2,
+                                    height: (collageHeight - gap) / 2,
+                                  ),
+                                  SizedBox(height: gap),
+                                  buildImage(
+                                    images[1],
+                                    width: (collageWidth - gap) / 2,
+                                    height: (collageHeight - gap) / 2,
+                                  ),
+                                ],
+                              ),
+                              SizedBox(width: gap),
+                              Column(
+                                mainAxisSize: MainAxisSize.max,
+                                children: [
+                                  buildImage(
+                                    images[2],
+                                    width: (collageWidth - gap) / 2,
+                                    height: (collageHeight - gap) / 2,
+                                  ),
+                                  SizedBox(height: gap),
+                                  Stack(
+                                    children: [
+                                      buildImage(
+                                        images[3],
+                                        width: (collageWidth - gap) / 2,
+                                        height: (collageHeight - gap) / 2,
+                                      ),
+                                      if (images.length > 4)
+                                        Positioned.fill(
+                                          child: Container(
+                                            color: Colors.black.withOpacity(0.5),
+                                            child: Center(
+                                              child: Text(
+                                                '+${images.length - 4}',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 24,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
                                             ),
                                           ),
                                         ),
-                                      ),
-                                    ),
+                                    ],
+                                  ),
                                 ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
+          );
+        },
       ),
     );
   }
@@ -639,7 +596,7 @@ class _InformationPageState extends State<InformationPage> {
             MaterialPageRoute(builder: (context) => HomePage()),
           );
         } else if (index == 1) {
-          // Đã ở trang InformationPage, không cần làm gì
+          // Đã ở trang InformationPage
         } else if (index == 2) {
           Navigator.push(
             context,
