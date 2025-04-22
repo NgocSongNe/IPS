@@ -1,6 +1,4 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/Location.dart';
 import 'package:flutter_application_1/dashboard.dart';
 import 'package:flutter_application_1/home.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -113,21 +111,6 @@ class _InformationPageState extends State<InformationPage>
     categories = CategoryModel.getCategories();
   }
 
-  Future<List<String>> _getImagesFromFolder(String folderName) async {
-    try {
-      final manifestContent =
-          await DefaultAssetBundle.of(context).loadString('AssetManifest.json');
-      final Map<String, dynamic> manifestMap = json.decode(manifestContent);
-      final imagePaths = manifestMap.keys
-          .where((String key) => key.startsWith('assets/images/$folderName/'))
-          .toList();
-      return imagePaths;
-    } catch (e) {
-      print("Error loading images for folder $folderName: $e");
-      return [];
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -197,171 +180,8 @@ class _InformationPageState extends State<InformationPage>
   }
 
   Widget _buildPostCards() {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: NeverScrollableScrollPhysics(),
-      itemCount: postCards.length,
-      itemBuilder: (context, index) {
-        return AnimatedOpacity(
-          opacity: 1.0,
-          duration: Duration(milliseconds: 500 + (index * 100)),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 16.0),
-            child: _buildEnhancedPostCard(postCards[index] as PostCard),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildEnhancedPostCard(PostCard postCard) {
-    String title = postCard.caption.split('-').first.trim();
-    String content = postCard.caption.length > 100
-        ? '${postCard.caption.substring(0, 100)}...'
-        : postCard.caption;
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PostDetailPage(
-              caption: postCard.caption,
-              folderName: postCard.folderName,
-              customImagePath: null,
-            ),
-          ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 15,
-              offset: Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Hiển thị hình ảnh dưới dạng danh sách ngang (horizontal list)
-            FutureBuilder<List<String>>(
-              future: _getImagesFromFolder(postCard.folderName),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Container(
-                    height: 150,
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                } else if (snapshot.hasError ||
-                    !snapshot.hasData ||
-                    snapshot.data!.isEmpty) {
-                  return Container(
-                    height: 150,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(20),
-                      ),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.broken_image,
-                        color: Colors.grey.shade600,
-                        size: 50,
-                      ),
-                    ),
-                  );
-                } else {
-                  final images = snapshot.data!;
-                  return Container(
-                    height: 150,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: images.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: Image.asset(
-                              images[index],
-                              width: 150,
-                              height: 150,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  width: 150,
-                                  height: 150,
-                                  color: Colors.grey.shade300,
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.broken_image,
-                                      color: Colors.grey.shade600,
-                                      size: 50,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                }
-              },
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.openSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.teal.shade800,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    content,
-                    style: GoogleFonts.openSans(
-                      fontSize: 14,
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        'Xem thêm',
-                        style: GoogleFonts.openSans(
-                          fontSize: 14,
-                          color: Colors.teal.shade600,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        size: 14,
-                        color: Colors.teal.shade600,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+    return Column(
+      children: postCards,
     );
   }
 
