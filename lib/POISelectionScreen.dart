@@ -13,8 +13,12 @@ import 'dart:ui' as ui;
 import 'package:flutter_application_1/services/tts_service.dart';
 import 'package:flutter_application_1/services/compass_service.dart';
 import 'package:flutter_application_1/services/route_service.dart'; 
-import 'package:flutter_application_1/services/geometry_services.dart'; // Import GeometryService
+import 'package:flutter_application_1/services/geometry_services.dart';
+
+import 'package:flutter_dotenv/flutter_dotenv.dart'; 
 class POISelectionScreen {
+  String mapboxAccessToken = dotenv.env['MAPBOX_ACCESS_TOKEN'] ?? 'default_value'; 
+  String url= dotenv.env['API_URL'] ?? '';
   final MapController mapController = MapController();
   double currentZoom = 20.0;
   String? startPOI;
@@ -40,7 +44,7 @@ class POISelectionScreen {
 
   final BuildContext context;
 
-   double _compassHeading = 0.0;
+  double _compassHeading = 0.0;
   final Function startWifiTracking;
   final Function stopWifiTracking;
 
@@ -50,8 +54,8 @@ class POISelectionScreen {
   int mockPositionIndex = 0;
   List<LatLng> mockUserPositions = [];
 
-final TTSService ttsService = TTSService(); 
-final RouteService routeService = RouteService();  
+  final TTSService ttsService = TTSService(); 
+  final RouteService routeService = RouteService();  
   final GeometryService geometryService = GeometryService(); 
 
 
@@ -122,13 +126,8 @@ String _getCategoryFromRP(String rp) {
   POISelectionScreen(
     {required this.userPositionCoordinates,  required this.selectedCategory,required this.context,required this.startWifiTracking, required this.stopWifiTracking}) {
     _loadWallsFromAPI();
-    _loadPOIData();
-    loadGeoJson().then((_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _focusOnPOIs();
-        _initializeMockUserPositions(); // Khởi tạo mockUserPositions sau khi có waypoints
-      });
-    });
+    loadPOIData();
+    loadGeoJson();
     ttsService.initTts();
     _initCompass(); // Khởi tạo cảm biến la bàn
 
@@ -145,7 +144,12 @@ void setMapPosition(LatLng position, double zoom) {
       _compassHeading = heading;
     });
   }
-
+void processGeoJsonData() {
+ 
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    _focusOnPOIs(); 
+  });
+}
 void _initTts() {
     ttsService.initTts();  // Gọi hàm khởi tạo TTS từ TTSService
   }
@@ -308,7 +312,7 @@ void _calculateDirections() {
     for (String endpoint in geoJsonEndpoints) {
       try {
         final response =
-            await http.get(Uri.parse("http://192.168.1.5:8765$endpoint"));
+            await http.get(Uri.parse('$url$endpoint'));
         if (response.statusCode == 200) {
           final geoJson = jsonDecode(response.body);
           if (geoJson['features'] is List) {
@@ -403,38 +407,17 @@ void _calculateDirections() {
             longitudes.reduce((a, b) => a > b ? a : b)),
       );
 
-      mapController.fitBounds(
-        mapBounds,
-        options: FitBoundsOptions(padding: EdgeInsets.all(50)),
-      );
+    
 
       print("Map bounds: Southwest (${mapBounds.south}, ${mapBounds.west}), Northeast (${mapBounds.north}, ${mapBounds.east})");
     }
   }
 
-  void _initializeMockUserPositions() {
-    // Lấy tọa độ từ waypoints để đảm bảo tất cả đều nằm trong bản đồ
-    if (waypoints.isNotEmpty) {
-      // Lấy tối đa 5 điểm từ waypoints để làm tọa độ mô phỏng
-      mockUserPositions = waypoints.take(5).toList();
-      if (mockUserPositions.isEmpty) {
-        // Nếu không có waypoints, lấy tọa độ từ poiList (trừ vị trí User)
-        mockUserPositions = poiList
-            .where((poi) => poi['rp'] != userPositionRP)
-            .map((poi) => poi['coordinates'] as LatLng)
-            .take(5)
-            .toList();
-      }
-      print("Initialized mockUserPositions: $mockUserPositions");
-    } else {
-      print("No waypoints available, mockUserPositions not initialized.");
-    }
-  }
 
   Future<void> _loadWallsFromAPI() async {
     try {
       final response =
-          await http.get(Uri.parse("http://192.168.1.5:8765/geojson/Paths"));
+          await http.get(Uri.parse('$url/geojson/Paths'));
       if (response.statusCode == 200) {
         final pathsJson = json.decode(response.body);
         walls = (pathsJson['features'] as List).map<List<LatLng>>((feature) {
@@ -451,10 +434,10 @@ void _calculateDirections() {
     }
   }
 
-  Future<void> _loadPOIData() async {
+  Future<void> loadPOIData() async {
     try {
       final response =
-          await http.get(Uri.parse("http://192.168.1.5:8765/geojson/POI"));
+          await http.get(Uri.parse("$url/geojson/POI"));
       if (response.statusCode == 200) {
         final poiJson = jsonDecode(response.body);
         // Lấy dữ liệu mô tả từ hàm getPOIDescriptions
@@ -605,11 +588,7 @@ void _calculateDirections() {
       var closestWaypoints = nearestWaypoints.take(3).toList();
 
       for (var wp in closestWaypoints) {
-        String wpRP = wp["rp"];
         double distance = wp["distance"];
-        generatedGraph[poiRP]!.add({"rp": wpRP, "distance": distance});
-        generatedGraph[wpRP]!.add({"rp": poiRP, "distance": distance});
-        print("Added edge: $poiRP -> $wpRP, distance: $distance");
       }
 
       if (closestWaypoints.isEmpty) {
@@ -854,6 +833,7 @@ void _calculateDirections() {
   void _drawRouteCD(BuildContext context, VoidCallback setStateCallback,
       {required bool showDirections}) {
     if (startPOI != null && endPOI != null) {
+
       originalRoute = _findShortestPath(startPOI!, endPOI!);
       if (originalRoute.isNotEmpty) {
         selectedRoute = _smoothRoute(originalRoute, segmentsPerPoint: 10);
@@ -893,7 +873,7 @@ void _calculateDirections() {
   }
 
 
-  void _onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
+  void onPOITap(String rp, BuildContext context, VoidCallback setStateCallback) {
     var poi = poiList.firstWhere(
           (poi) => poi['rp'] == rp,
       orElse: () => {
@@ -947,9 +927,9 @@ void _calculateDirections() {
                 style: TextStyle(fontSize: 14),
               ),
               const SizedBox(height: 10),
-             SingleChildScrollView(  // Cho phép cuộn ngang
-  scrollDirection: Axis.horizontal,  // Cuộn theo chiều ngang
-  child: Row(
+             SingleChildScrollView(
+                scrollDirection: Axis.horizontal,  
+                child: Row(
                 children: [
                   
                   ElevatedButton.icon(
@@ -958,7 +938,8 @@ void _calculateDirections() {
                       endPOI = rp;
                       selectedMarkerRP = userPositionRP;
                       secondSelectedMarkerRP = rp;
-
+                      processGeoJsonData();
+      
                       _drawRouteCD(context, setStateCallback,
                       showDirections: true);
                       Navigator.of(context).pop();
@@ -980,6 +961,7 @@ void _calculateDirections() {
                  
                   ElevatedButton.icon(
                     onPressed: () {
+                      processGeoJsonData();
                       startPOI = userPositionRP;
                       endPOI = rp;
                       selectedMarkerRP = userPositionRP;
@@ -1114,7 +1096,7 @@ void _calculateDirections() {
               urlTemplate: "https://api.mapbox.com/styles/v1/mapbox/outdoors-v11/tiles/{z}/{x}/{y}?access_token={accessToken}",
               subdomains: ['a', 'b', 'c'],
               additionalOptions: {
-                'accessToken': 'pk.eyJ1Ijoic29uZ3RhbmczMDA5IiwiYSI6ImNtODA1NGZkYjA0c2kya29rMWZxYm03MWoifQ.Us8IrAhRJNDO-5qJnfAoIg'
+                'accessToken': 'pk.eyJ1Ijoic29uZ3RhbmczMDA5IiwiYSI6ImNtOXk2OWF6bDExZjYyaXM3emFodXV3dzIifQ._QnF_9RRkvjjP8qoGkK9cg'
               }
             ),
             if (geoJsonParser.polygons.isNotEmpty)
@@ -1136,7 +1118,7 @@ void _calculateDirections() {
                     height: isSelected ? 100.0 : (isHighlighted ? 90.0 : 90.0),
                     child: GestureDetector(
                       onTap: () {
-                        _onPOITap(poi['rp'] as String, context, setStateCallback);
+                        onPOITap(poi['rp'] as String, context, setStateCallback);
                         setStateCallback();
                       },
                       
@@ -1301,8 +1283,7 @@ void _calculateDirections() {
                 setStateCallback();
               }
             },
-            child: Icon(Icons.directions_walk),
-            tooltip: "Mô phỏng di chuyển",
+       
             ),
           ),
       ],

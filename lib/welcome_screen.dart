@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/dashboard.dart';
 import 'package:flutter_application_1/home.dart';
 
 import 'package:google_fonts/google_fonts.dart';
@@ -88,7 +89,7 @@ class _WelcomePageState extends State<WelcomePage> {
                         Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (context) => HomePage()));
+                                builder: (context) => DashboardScreen()));
                       },
                       child: Container(
                         padding:

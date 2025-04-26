@@ -29,7 +29,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
   TextEditingController searchPlaceController = TextEditingController();
   int currentPageIndex = 1;
   bool showLabel = true;
@@ -39,6 +39,8 @@ class _HomePageState extends State<HomePage> {
   File? profileImage;
 
   late POISelectionScreen poiSelectionScreen;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
   LatLng userPositionCoordinates = LatLng(11.95722012378790, 108.44507513707570); // Tọa độ mặc định cho người dùng
   String? selectedMarkerRP;
@@ -54,6 +56,21 @@ class _HomePageState extends State<HomePage> {
     getMaps();
     requestPermissions();
     WidgetsBinding.instance.addPostFrameCallback((_) => _showGuideDialog());
+
+    // Khởi tạo animation cho hiệu ứng fade-in
+    _animationController = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: 1),
+    );
+    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(_animationController);
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+     wifiScanTimer?.cancel();
+    super.dispose();
   }
 
   void getCategories() {
@@ -64,26 +81,35 @@ class _HomePageState extends State<HomePage> {
     maps = MapModel.getMaps();
   }
  void updatePosition(List coordinates, int rp) {
-    setState(() {
-      userPositionCoordinates = LatLng(coordinates[1], coordinates[0]);
-      selectedMarkerRP = rp.toString();
-    });
+    if (mounted) {
+      setState(() {
+        userPositionCoordinates = LatLng(coordinates[1], coordinates[0]);
+        selectedMarkerRP = rp.toString();
+      });
 
-    // Di chuyển bản đồ đến vị trí người dùng
-    poiSelectionScreen.mapController.move(userPositionCoordinates, 30);
+      // Di chuyển bản đồ đến vị trí người dùng
+      poiSelectionScreen.mapController.move(userPositionCoordinates, 30);
+    }
   }
  Future<void> startWifiTracking() async {
     await wifiService.startWifiTracking(updatePosition); // Truyền callback để cập nhật vị trí người dùng
   }
+ Future<void> stopWifiTracking() async {
+    await wifiService.stopWifiTracking(wifiScanTimer); // Truyền callback để cập nhật vị trí người dùng
+  }
+ Future<void> sendWifiData(List<WiFiAccessPoint> wifiNetworks) async {
+  try {
+    // Gửi dữ liệu Wi-Fi đến server
+    await wifiService.sendWiFiDataToServer(wifiNetworks, updatePosition);  
+  } catch (e) {
+    print("Lỗi khi gửi dữ liệu Wi-Fi: $e");
+  }
+}
 
   // Dừng quét Wi-Fi
-  void stopWifiTracking() async {
-    await wifiService.stopWifiTracking(wifiScanTimer);
-  }
+  
     void _showGuideDialog() async {
-    // Lấy instance của SharedPreferences
     final prefs = await SharedPreferences.getInstance();
-    // Kiểm tra xem bảng đã được hiển thị chưa
     bool hasShownGuide = prefs.getBool('hasShownSwipeGuide') ?? false;
 
     if (!hasShownGuide) {
@@ -95,20 +121,25 @@ class _HomePageState extends State<HomePage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
+            backgroundColor: Colors.white,
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
                 Text(
                   "Vuốt để di chuyển",
-                  style: GoogleFonts.openSans(fontSize: 18),
+                  style: GoogleFonts.openSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.teal.shade800,
+                  ),
                 ),
-              SizedBox(height: 10),
+                SizedBox(height: 15),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const[
-                  Icon(Icons.chevron_left, size: 30),
-                  Icon(Icons.swipe, size: 50),
-                  Icon(Icons.chevron_right, size: 30),
+                  children: const [
+                    Icon(Icons.chevron_left, size: 30, color: Colors.teal),
+                    Icon(Icons.swipe, size: 50, color: Colors.teal),
+                    Icon(Icons.chevron_right, size: 30, color: Colors.teal),
                 ],
               ),
               SizedBox(height: 20),
@@ -124,14 +155,19 @@ class _HomePageState extends State<HomePage> {
                   });
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
+                    backgroundColor: Colors.teal.shade600,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
+                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
                 ),
                   child: Text(
                     "OK",
-                    style: GoogleFonts.openSans(color: Colors.white),
+                    style: GoogleFonts.openSans(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
               ),
             ],
@@ -140,7 +176,7 @@ class _HomePageState extends State<HomePage> {
       },
     );
   }
-    }
+}
 Widget _categoriesMethod() {
   return CategoriesWidget(
     categories: categories,
@@ -159,22 +195,59 @@ Widget _categoriesMethod() {
     List<CategoryModel> categories = CategoryModel.getCategories(); 
      List<WiFiAccessPoint> wifiList = [];
     return Scaffold(
-      backgroundColor: Color(0xffFFEBCD),
+      backgroundColor: Colors.white,
       bottomNavigationBar: _bottomNavBar(),
-      body: Stack(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.teal.shade50,
+              Colors.blue.shade50,
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Stack(
         children: [
           Column(
             children: [
+            
+                _buildHeader(),
+       
               _searchField(),
               const SizedBox(height: 5),
             
              _categoriesMethod(),
               const SizedBox(height: 10),
               Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 15,
+                              offset: Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: FadeTransition(
+                            opacity: _fadeAnimation,
                 child: poiSelectionScreen.buildMapSection(context, () {
                   setState(() {});
                 }),
               ),
+                        ),
+                      ),
+                    ),
+                  ),
+               const   SizedBox(height: 20),
             ],
           ),
           Positioned(
@@ -182,8 +255,11 @@ Widget _categoriesMethod() {
             right: 20,
             child: Column(
               children: [
-                FloatingActionButton(
-                  heroTag: "location_button",
+                    _buildFloatingButton(
+                      icon: Icons.my_location,
+                      gradient: LinearGradient(
+                        colors: [Colors.yellow.shade400, Colors.yellow.shade600],
+                      ),
                  onPressed: () async {
                     
                       
@@ -194,40 +270,58 @@ Widget _categoriesMethod() {
                         print("SSID: ${wifi.ssid}, RSSI: ${wifi.level}");
                       }
                     }
-                    startWifiTracking();
-                   
-
-                    String? imagePath;
-                    if (imagePath != null) {
-                      profileImage = File(imagePath);
-                    }
-                  },
-                  backgroundColor: Colors.yellow,
-                  child:const Icon(Icons.my_location, color: Colors.black),
+                    sendWifiData(wifiList);
+                      },
+                      heroTag: "location_button",
                 ),
-                const SizedBox(height: 10),
-                // FloatingActionButton(
-                //   onPressed: () async {
-                //     List<String> macList = [/* danh sách MAC cố định */];
-                //     List<int> rssiData = await getOrderedRSSI(macList);
-                //     await sendWiFiDataToServer(rssiData);
-                //   },
-                //   child: Icon(Icons.wifi),
-                // ),
-               
-                // Button để bắt đầu quét Wi-Fi
-               FloatingActionButton(
-  heroTag: "stop_wifi_button",
-  onPressed: () {
-    // Dừng quét Wi-Fi
-    stopWifiTracking();
-  },
-  backgroundColor: Colors.red,
-  child: Icon(Icons.stop, color: Colors.white),
-),
-SizedBox(height: 10),
+                    SizedBox(height: 15),
+                    _buildFloatingButton(
+                      icon: Icons.stop,
+                      gradient: LinearGradient(
+                        colors: [Colors.red.shade400, Colors.red.shade600],
+                      ),
+                    onPressed: () {
+                      // Dừng quét Wi-Fi
+                      stopWifiTracking();
+                      _showGuideDialog();
+                    },
+                      heroTag: "stop_wifi_button",
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Bản đồ thư viện',
+            style: GoogleFonts.openSans(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.teal.shade800,
+              shadows: [
+                Shadow(
+                  color: Colors.black.withOpacity(0.2),
+                  offset: Offset(2, 2),
+                  blurRadius: 4,
+                ),
               ],
             ),
+          ),
+          Icon(
+            Icons.map,
+            color: Colors.teal.shade600,
+            size: 30,
           ),
         ],
       ),
@@ -251,8 +345,37 @@ Widget _searchField() {
   );
 }
 
-
-
+  Widget _buildFloatingButton({
+    required IconData icon,
+    required Gradient gradient,
+    required VoidCallback onPressed,
+    required String heroTag,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: gradient,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: FloatingActionButton(
+        heroTag: heroTag,
+        onPressed: onPressed,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Icon(
+          icon,
+          color: Colors.white,
+          size: 28,
+        ),
+      ),
+    );
+  }
 
   Widget _categoryButton(String title, IconData icon) {
     return CategoryButtonWidget(
@@ -282,40 +405,41 @@ Widget _searchField() {
   NavigationBar _bottomNavBar() {
     return NavigationBar(
       onDestinationSelected: (int index) {
+        if (index != currentPageIndex) {
         setState(() {
           currentPageIndex = index;
         });
         if (index == 0) {
-           Navigator.push(
+            Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => DashboardScreen()),
           );
-           
-        } else if (index == 1) {
-       
         } else if (index == 2) {
-           Navigator.push(
+            Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => InformationPage()),
           );
+          }
         }
       },
-      indicatorColor: Colors.amber,
+      indicatorColor: Colors.teal.shade200,
       selectedIndex: currentPageIndex,
+      backgroundColor: Colors.white,
+      elevation: 10,
       destinations: const <Widget>[
         NavigationDestination(
-          selectedIcon: Icon(Icons.home),
-          icon: Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home, color: Colors.teal),
+          icon: Icon(Icons.home_outlined, color: Colors.grey),
           label: 'Trang chủ',
         ),
         NavigationDestination(
-          icon: Badge(child: Icon(Icons.map)),
-          label: 'Map',
+          selectedIcon: Icon(Icons.map, color: Colors.teal),
+          icon: Badge(child: Icon(Icons.map_outlined, color: Colors.grey)),
+          label: 'Bản đồ',
         ),
         NavigationDestination(
-          icon: Badge(
-            child: Icon(Icons.info_outline),
-          ),
+          selectedIcon: Icon(Icons.info, color: Colors.teal),
+          icon: Badge(child: Icon(Icons.info_outline, color: Colors.grey)),
           label: 'Thông tin',
         ),
       ],
@@ -345,15 +469,43 @@ class _POISelectionScreenPageState extends State<POISelectionScreenPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Chọn Địa Điểm")),
+      appBar: AppBar(
+        title: Text(
+          "Chọn Địa Điểm",
+          style: GoogleFonts.openSans(
+            fontWeight: FontWeight.bold,
+            color: Colors.teal.shade800,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 2,
+      ),
       body: Column(
         children: [
           if (poiSelectionScreen.startPOI != null)
-            Text("Điểm bắt đầu: RP ${poiSelectionScreen.startPOI}",
-                style: TextStyle(fontSize: 16)),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                "Điểm bắt đầu: RP ${poiSelectionScreen.startPOI}",
+                style: GoogleFonts.openSans(
+                  fontSize: 16,
+                  color: Colors.teal.shade800,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           if (poiSelectionScreen.endPOI != null)
-            Text("Điểm kết thúc: RP ${poiSelectionScreen.endPOI}",
-                style: TextStyle(fontSize: 16)),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                "Điểm kết thúc: RP ${poiSelectionScreen.endPOI}",
+                style: GoogleFonts.openSans(
+                  fontSize: 16,
+                  color: Colors.teal.shade800,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           Expanded(
             child: poiSelectionScreen.buildMapSection(context, () {
               setState(() {});

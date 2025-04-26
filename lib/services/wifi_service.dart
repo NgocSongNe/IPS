@@ -4,33 +4,43 @@ import 'package:wifi_scan/wifi_scan.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
+import 'package:flutter_dotenv/flutter_dotenv.dart'; 
+
+  
 class WifiService {
+  final String baseurl= dotenv.env['API_URL'] ?? '';
   Future<void> startWifiTracking(Function updatePosition) async {
     Timer.periodic(Duration(seconds: 10), (timer) async {
       List<WiFiAccessPoint> wifiNetworks = await WifiScanner.scanWiFi();
       await sendWiFiDataToServer(wifiNetworks, updatePosition);  // Truyền callback để cập nhật vị trí người dùng
     });
+
   }
 
   Future<void> stopWifiTracking(Timer? wifiScanTimer) async {
     wifiScanTimer?.cancel();  // Dừng Timer
-    print("❌ Dừng quét Wi-Fi");
+    print("Dừng quét Wi-Fi");
   }
 
   Future<void> sendWiFiDataToServer(List<WiFiAccessPoint> wifiNetworks, Function updatePosition) async {
-    final url = Uri.parse('http://192.168.1.5:8765/predict'); // URL server Node.js
+    final url = Uri.parse('$baseurl/predict'); // URL server Node.js
 
     try {
       if (wifiNetworks.isEmpty) {
-        print("❌ Không tìm thấy mạng Wi-Fi");
+        print("Không tìm thấy mạng Wi-Fi");
         return;
       }
 
       List<String> macAddresses = [
-        // Các địa chỉ MAC của các mạng cần theo dõi
         "88:dc:97:12:62:cf", "8e:dc:97:12:65:63", "8e:dc:97:12:65:21", "8e:dc:97:12:65:64",
-        "8e:dc:97:12:65:2b", "88:dc:97:12:64:c4", "88:dc:97:12:62:c6", "8e:dc:97:12:62:cf"
-        // Thêm các địa chỉ MAC khác nếu cần
+       "8e:dc:97:12:65:2b", "88:dc:97:12:64:c4", "88:dc:97:12:62:c6", "8e:dc:97:12:62:cf",
+       "b4:5d:50:d7:e9:51", "b4:5d:50:d7:e9:50", "88:dc:97:12:62:c7", "8e:dc:97:12:65:22",
+       "88:dc:97:12:65:57", "88:dc:97:12:64:82", "88:dc:97:12:64:83", "8e:dc:97:12:62:c7",
+       "8e:dc:97:12:62:c6", "8e:dc:97:12:64:82", "8e:dc:97:12:64:83", "88:dc:97:12:65:58",
+       "88:dc:97:12:65:2b", "88:dc:97:12:65:2a", "8e:dc:97:12:64:c4", "88:dc:97:12:62:d0",
+       "b4:5d:50:d7:e9:40", "8e:dc:97:12:65:2a", "8e:dc:97:12:62:d0", "88:dc:97:12:65:22",
+       "88:dc:97:12:65:21", "8e:dc:97:12:65:58", "8e:dc:97:12:65:57", "b4:5d:50:d7:e9:41",
+       "88:dc:97:12:65:64", "88:dc:97:12:65:63"
       ];
 
       // Duyệt qua các mạng Wi-Fi quét được và lưu RSSI vào map
@@ -46,7 +56,6 @@ class WifiService {
         wifiData.add(macToRssi[mac] ?? -100); // Nếu không có mạng, gán -100
       }
 
-      // Gửi dữ liệu RSSI lên server
       var response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
@@ -58,13 +67,12 @@ class WifiService {
         List coordinates = responseData['coordinates'];
         int rp = responseData['rp'];
 
-        // Cập nhật vị trí người dùng
         updatePosition(coordinates, rp);
       } else {
-        print("❌ Gửi dữ liệu thất bại: ${response.statusCode}");
+        print("Gửi dữ liệu thất bại: ${response.statusCode}");
       }
     } catch (e) {
-      print("❌ Lỗi khi quét và gửi dữ liệu Wi-Fi: $e");
+      print("Lỗi khi quét và gửi dữ liệu Wi-Fi: $e");
     }
   }
 }
