@@ -323,19 +323,19 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.teal.shade200, Colors.blue.shade200],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
+          // gradient: LinearGradient(
+          //   colors: [Colors.teal.shade200, Colors.blue.shade200],
+          //   begin: Alignment.centerLeft,
+          //   end: Alignment.centerRight,
+          // ),
           borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15),
-              blurRadius: 15,
-              offset: Offset(0, 5),
-            ),
-          ],
+          // boxShadow: [
+          //   BoxShadow(
+          //     color: Colors.black.withOpacity(0.15),
+          //     blurRadius: 15,
+          //     offset: Offset(0, 5),
+          //   ),
+          // ],
         ),
         child: SearchFieldWidget(
           controller: searchPlaceController,

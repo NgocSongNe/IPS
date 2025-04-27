@@ -90,7 +90,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Future<void> sendWiFiDataToServer() async {
-    final url = Uri.parse('http://192.168.1.11/predict');
+    final url = Uri.parse('http://192.168.1.7/predict');
     try {
       var wifiNetworks = await WifiScanner.scanWiFi();
       if (wifiNetworks.isEmpty) {
